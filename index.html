@@ -1,0 +1,979 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0e0e0f">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Binder">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg">
+<link rel="apple-touch-icon" href="icon.svg">
+<title>Binder</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* VOICE: calm, exact money tool for a collector; nothing shouts except the numbers
+   IDEA: a binder ledger: card sleeves in rows, each lot a line in a ledger
+   PICTURE: big live figures + card thumbnails; charts drawn flat in Stats
+   COLOUR: white / near-black, one card-border yellow accent, green/red only for money
+   TYPE: Inter Tight for figures and titles, Inter for body
+   LAYOUT: one column up to 560px, bottom tab bar with a central + button */
+:root{color-scheme:light dark;--bg:light-dark(#fafaf9,#0e0e0f);--card:light-dark(#ffffff,#18181a);--ink:light-dark(#111113,#f2f2f3);--mut:light-dark(#76767c,#8f8f97);--line:light-dark(#ebebea,#27272b);--soft:light-dark(#f2f2f0,#1f1f22);--acc:#f2c230;--accInk:#1d1600;--pos:light-dark(#12804a,#4fd18b);--neg:light-dark(#c2382c,#ff6f62);--warn:light-dark(#fff6d6,#3a3010)}
+:root[data-theme=light]{color-scheme:light}:root[data-theme=dark]{color-scheme:dark}
+*{box-sizing:border-box;min-width:0}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 Inter,system-ui,sans-serif;overflow-x:clip;-webkit-tap-highlight-color:transparent}
+body.lock{overflow:hidden}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+.app{max-width:560px;margin:0 auto;padding:calc(env(safe-area-inset-top) + 18px) 18px calc(env(safe-area-inset-bottom) + 110px)}
+h1{font:600 30px/1.1 'Inter Tight',sans-serif;margin:6px 0 18px;letter-spacing:-.01em}
+h2{font:600 19px/1.2 'Inter Tight',sans-serif;margin:0}
+h3{font:600 15px/1.3 Inter,sans-serif;margin:26px 0 10px;color:var(--mut)}
+.num,.big{font-family:'Inter Tight',sans-serif;font-variant-numeric:tabular-nums;white-space:nowrap}
+.big{font-size:clamp(26px,8vw,34px);font-weight:600;line-height:1.1;letter-spacing:-.01em}
+.mut{color:var(--mut)}.pos{color:var(--pos)}.neg{color:var(--neg)}
+.small{font-size:13px}
+.kpis{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.kpi{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px 16px}
+.kpi.wide{grid-column:1/-1}
+.kpi .l{font-size:13px;color:var(--mut)}
+.kpi .s{font-size:13px;margin-top:2px}
+.box{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:6px 16px}
+.row{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--line)}
+.row:last-child{border-bottom:0}
+.row .grow{flex:1;min-width:0}
+.row .t{font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.row .d{font-size:13px;color:var(--mut);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.row .r{text-align:right;flex:none}
+.tap{cursor:pointer}
+.thumb{flex:none;width:42px;height:58px;border-radius:5px;background:var(--soft);border:1px solid var(--line);overflow:hidden;display:grid;place-items:center;font:600 10px/1.1 'Inter Tight';color:var(--mut);text-align:center;padding:2px;position:relative}
+.thumb img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.thumb.lg{width:120px;height:167px;border-radius:9px;font-size:13px}
+.tag{display:inline-block;font-size:12px;line-height:1;padding:4px 7px;border-radius:999px;background:var(--soft);color:var(--ink);margin-right:4px;white-space:nowrap}
+.tag.acc{background:var(--acc);color:var(--accInk)}
+.tag.warn{background:var(--warn)}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{border:1px solid var(--line);background:var(--card);border-radius:999px;padding:0 14px;min-height:38px;font-size:14px}
+.chip[aria-pressed=true]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.seg{display:flex;background:var(--soft);border-radius:12px;padding:3px;gap:3px;margin-bottom:14px}
+.seg button{flex:1;border:0;background:none;border-radius:9px;min-height:38px;font-size:14px;color:var(--mut)}
+.seg button[aria-pressed=true]{background:var(--card);color:var(--ink);box-shadow:0 1px 2px #0002}
+label.f{display:block;font-size:13px;color:var(--mut);margin:14px 0 6px}
+input.i,select.i,textarea.i{width:100%;min-height:46px;border:1px solid var(--line);background:var(--card);border-radius:12px;padding:10px 12px;font-size:16px}
+textarea.i{min-height:110px;font:13px/1.4 ui-monospace,monospace}
+.grid2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:48px;padding:0 18px;border-radius:14px;border:1px solid var(--line);background:var(--card);font-weight:500}
+.btn.pri{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.btn.acc{background:var(--acc);color:var(--accInk);border-color:var(--acc)}
+.btn.full{width:100%}
+.btn.sm{min-height:38px;padding:0 12px;font-size:14px;border-radius:11px}
+.btn.danger{color:var(--neg)}
+.btn:disabled{opacity:.4;cursor:default}
+.linkb{border:0;background:none;color:var(--mut);font-size:14px;padding:10px 0;text-decoration:underline;text-underline-offset:3px}
+.bar{display:flex;gap:8px}
+.bar input{flex:1}
+.cam{flex:none;width:46px;height:46px;border-radius:12px;border:1px solid var(--line);background:var(--card);display:grid;place-items:center;cursor:pointer}
+.hint{font-size:13px;color:var(--mut);margin:8px 2px;min-height:18px}
+.hint b{color:var(--ink);font-weight:500}
+.nav{position:fixed;left:0;right:0;bottom:0;background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom);z-index:5}
+.nav .in{max-width:560px;margin:0 auto;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));align-items:center;height:64px}
+.nav button{border:0;background:none;display:grid;justify-items:center;gap:2px;font-size:11px;color:var(--mut);height:100%}
+.nav button[aria-current=true]{color:var(--ink)}
+.nav .plus{width:54px;height:54px;border-radius:18px;background:var(--acc);color:var(--accInk);justify-self:center;display:grid;place-items:center;box-shadow:0 6px 18px #f2c23055}
+svg.ic{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.scrim{position:fixed;inset:0;background:#0007;z-index:10;display:flex;align-items:flex-end;justify-content:center}
+.scrim[hidden]{display:none}
+.sheet{background:var(--bg);width:100%;max-width:560px;max-height:92dvh;border-radius:22px 22px 0 0;display:flex;flex-direction:column;animation:up .22s ease-out}
+@keyframes up{from{transform:translateY(40px);opacity:.4}}
+@media (prefers-reduced-motion:reduce){.sheet{animation:none}}
+.sheet header{display:flex;align-items:center;justify-content:space-between;padding:16px 18px 8px}
+.sheet .x{border:0;background:var(--soft);width:36px;height:36px;border-radius:50%;font-size:20px;line-height:1}
+.sheet .body{overflow:auto;padding:4px 18px calc(env(safe-area-inset-bottom) + 22px)}
+.actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.act{display:flex;flex-direction:column;align-items:flex-start;gap:6px;text-align:left;padding:14px;border-radius:16px;border:1px solid var(--line);background:var(--card);min-height:84px}
+.act span{font-size:13px;color:var(--mut);line-height:1.3}
+.act b{font-weight:600}
+.toast{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom) + 84px);transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 14px 10px 16px;border-radius:14px;display:flex;gap:14px;align-items:center;z-index:20;font-size:14px;max-width:calc(100% - 32px)}
+.toast button{border:0;background:none;color:var(--acc);font-weight:600}
+.banner{background:var(--warn);border-radius:12px;padding:10px 12px;font-size:13px;margin:0 0 14px}
+.empty{text-align:center;padding:36px 12px;color:var(--mut)}
+.fig{position:relative;height:200px;margin:6px 0 4px}
+.fig>svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
+.legend{display:flex;gap:14px;font-size:12px;color:var(--mut);flex-wrap:wrap;margin-bottom:8px}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+.meter{height:8px;border-radius:99px;background:var(--soft);overflow:hidden}
+.meter>i{display:block;height:100%;background:var(--ink);border-radius:99px}
+.meter.acc>i{background:var(--acc)}
+.rings{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;text-align:center}
+.rings svg{width:100%;max-width:96px;height:auto}
+.rings .l{font-size:12px;color:var(--mut);line-height:1.3}
+.line-card{border:1px solid var(--line);border-radius:14px;padding:10px 12px;margin:8px 0;background:var(--card)}
+.qty{display:flex;align-items:center;gap:4px}
+.qty button{width:34px;height:34px;border-radius:10px;border:1px solid var(--line);background:var(--soft)}
+.qty input{width:52px;text-align:center;min-height:34px;padding:4px}
+.sum{display:flex;justify-content:space-between;padding:6px 0;font-size:15px}
+.sum.tot{border-top:1px solid var(--line);margin-top:6px;padding-top:10px;font-weight:600}
+details.more{margin-top:12px}
+details.more summary{cursor:pointer;color:var(--mut);font-size:14px;padding:8px 0;list-style:none}
+details.more summary::before{content:'+ '}
+details.more[open] summary::before{content:'− '}
+.split{display:flex;justify-content:space-between;gap:10px;align-items:baseline}
+hr{border:0;border-top:1px solid var(--line);margin:18px 0}
+@media (max-width:380px){.app{padding-inline:14px}.kpi{padding:12px}}
+</style>
+</head>
+<body>
+<main class="app" id="view"></main>
+<nav class="nav"><div class="in">
+  <button data-tab="home" aria-current="true"><svg class="ic" viewBox="0 0 24 24"><path d="M4 11l8-7 8 7v9a1 1 0 0 1-1 1h-5v-6h-4v6H5a1 1 0 0 1-1-1z"/></svg>Inicio</button>
+  <button data-tab="inv"><svg class="ic" viewBox="0 0 24 24"><rect x="4" y="3" width="7" height="9" rx="1.5"/><rect x="13" y="3" width="7" height="9" rx="1.5"/><rect x="4" y="14" width="7" height="7" rx="1.5"/><rect x="13" y="14" width="7" height="7" rx="1.5"/></svg>Inventario</button>
+  <button class="plus" id="plus" aria-label="Nueva operación"><svg class="ic" viewBox="0 0 24 24" style="width:26px;height:26px;stroke-width:2.2"><path d="M12 5v14M5 12h14"/></svg></button>
+  <button data-tab="stats"><svg class="ic" viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Stats</button>
+  <button data-tab="set"><svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>Ajustes</button>
+</div></nav>
+<div class="scrim" id="scrim" hidden></div>
+<div id="toastHost"></div>
+
+<script>
+{
+/* ================= utilidades ================= */
+const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>[...r.querySelectorAll(s)];
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+const today=()=>{const d=new Date();d.setMinutes(d.getMinutes()-d.getTimezoneOffset());return d.toISOString().slice(0,10)};
+const mk=d=>d.slice(0,7);
+const eurF=new Intl.NumberFormat('es-ES',{style:'currency',currency:'EUR',maximumFractionDigits:2});
+const eur=v=>v==null||isNaN(v)?'—':eurF.format(v);
+const eur0=v=>v==null||isNaN(v)?'—':new Intl.NumberFormat('es-ES',{style:'currency',currency:'EUR',maximumFractionDigits:0}).format(v);
+const sgn=v=>(v>0?'+':'')+eur(v);
+const pct=v=>v==null||!isFinite(v)?'—':(v>0?'+':'')+Math.round(v*100)+' %';
+const num=v=>{const n=parseFloat(String(v).replace(',','.'));return isNaN(n)?0:n};
+const r2=v=>Math.round(v*100)/100;
+const days=(a,b)=>Math.round((new Date(b)-new Date(a))/864e5);
+const cls=v=>v>0.004?'pos':v<-0.004?'neg':'mut';
+const MES=['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+const mLabel=k=>MES[+k.slice(5,7)-1]+(k.slice(2,4)!==today().slice(2,4)?' '+k.slice(2,4):'');
+
+const LANGS=[['es','ES'],['en','EN'],['ja','JP'],['fr','FR'],['de','DE'],['it','IT'],['pt','PT']];
+const LTOK={es:'es',en:'en',jp:'ja',ja:'ja',fr:'fr',de:'de',it:'it',pt:'pt'};
+const LNAME=Object.fromEntries(LANGS);
+const CONDS=['MT','NM','EX','GD','LP','PL','PO'];
+const FINS=[['normal','Normal'],['holo','Holo'],['reverse','Reverse'],['1ed','1ª ed.']];
+const FNAME=Object.fromEntries(FINS);
+const GCOS=['PSA','CGC','BGS','TAG','SGC','ACE','Otra'];
+const halves=(hi,lo)=>{const a=[];for(let g=hi;g>=lo;g-=.5)a.push(String(g));return a};
+const GSCALE={
+  PSA:['10','9','8.5','8','7.5','7','6.5','6','5.5','5','4.5','4','3.5','3','2.5','2','1.5','1'],
+  BGS:['10 Black Label','10 Pristine',...halves(9.5,1)],
+  CGC:['10 Pristine','10 Gem Mint',...halves(9.5,1)],
+  TAG:['10 Pristine','10 Gem Mint',...halves(9.5,1)],
+  SGC:['10 Pristine','10 Gem Mint',...halves(9.5,1)],
+  ACE:['10','9','8','7','6','5','4','3','2','1'],
+  Otra:halves(10,1)};
+const SEALED=['Sobre','Blister','Booster Bundle','ETB','Caja de sobres','Colección','Lata','Otro'];
+const EXPCATS=['Material','Envíos','Eventos','Suscripciones','Otro'];
+
+/* ================= estado ================= */
+const KEY='binder-v1';
+const blank=()=>({v:1,settings:{lang:'es',cond:'NM',channels:[{n:'Cardmarket',fee:5},{n:'Wallapop',fee:0},{n:'En mano',fee:0},{n:'eBay',fee:13}],goals:{profit:300,cash:150,sales:20}},catalog:{},products:{},lots:[],moves:[]});
+let S;
+try{S=JSON.parse(localStorage.getItem(KEY))||blank()}catch(e){S=blank()}
+let storageOK=true;
+const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){storageOK=false}};
+let tab='home', invSeg='cards', statsPer='y', demoCatalogUsed=false;
+
+/* ================= catálogo (TCGdex) ================= */
+const API='https://api.tcgdex.net/v2/';
+const DEMO=[ // catálogo de ejemplo, solo se usa si no hay conexión con TCGdex
+ ['sv3pt5-199','Charizard ex','199','151',165,190],['sv3pt5-205','Mew ex','205','151',165,40],['sv3pt5-025','Pikachu','025','151',165,0.6],
+ ['sv3-223','Charizard ex','223','Obsidian Flames',197,55],['sv3-125','Charizard ex','125','Obsidian Flames',197,6],
+ ['swsh7-215','Umbreon VMAX','215','Evolving Skies',203,1100],['swsh7-218','Rayquaza VMAX','218','Evolving Skies',203,260],
+ ['sv8-238','Pikachu ex','238','Surging Sparks',191,280],['sv8-219','Pikachu ex','219','Surging Sparks',191,45],
+ ['sv6pt5-085','Pecharunt ex','085','Shrouded Fable',64,25],['sv4pt5-234','Charizard ex','234','Paldean Fates',91,95],
+ ['swsh12pt5-GG70','Giratina VSTAR','GG69','Crown Zenith',159,90],['sv7-175','Terapagos ex','175','Stellar Crown',142,60],
+ ['base1-4','Charizard','4','Base Set',102,350],['swsh9-TG30','Charizard','TG03','Brilliant Stars',172,30],['sv5-180','Gengar ex','180','Temporal Forces',162,12]
+].map(([id,name,n,set,total,price])=>({id,name,num:n,set,total,price,priceHolo:price,img:null,demo:true}));
+
+const numVariants=n=>{n=String(n);const m=n.match(/^([A-Z]*)(\d+)$/i);if(!m)return[n];const p=m[1],d=String(+m[2]);return [...new Set([p+d,p+d.padStart(2,'0'),p+d.padStart(3,'0')])]};
+
+function parseQ(q){
+  const o={name:[],lang:null,num:null,total:null,finish:null,cond:null,grade:null};
+  for(const t of q.trim().split(/\s+/)){
+    const l=t.toLowerCase(); if(!l)continue;
+    if(LTOK[l]){o.lang=LTOK[l];continue}
+    if(['mt','nm','gd','lp','pl','po'].includes(l)){o.cond=l.toUpperCase();continue}
+    if(['rev','reverse','rh'].includes(l)){o.finish='reverse';continue}
+    if(l==='holo'){o.finish='holo';continue}
+    if(['1ed','1st','1a'].includes(l)){o.finish='1ed';continue}
+    let m=l.match(/^(psa|cgc|bgs|tag|sgc|ace)(\d{1,2}(?:[.,]5)?)?$/);
+    if(m){o.grade={co:m[1].toUpperCase(),g:m[2]?m[2].replace(',','.'):''};continue}
+    m=l.match(/^#?([a-z]{0,5}\d{1,3})\/([a-z]{0,3}\d{1,3})$/i);
+    if(m){o.num=m[1].toUpperCase();o.total=parseInt(m[2].replace(/\D/g,''));continue}
+    m=l.match(/^#?(\d{1,3})$/); if(m){o.num=m[1];continue}
+    m=l.match(/^(tg|gg|sv|swsh|sm|xy|bw|rc|sh)(\d{1,3})$/i); if(m){o.num=l.toUpperCase();continue}
+    o.name.push(t);
+  }
+  o.name=o.name.join(' '); return o;
+}
+async function api(path){const r=await fetch(API+path);if(!r.ok)throw new Error('HTTP '+r.status);return r.json()}
+function normCard(d,lang){
+  const cm=d.pricing&&d.pricing.cardmarket||{};
+  return {id:d.id,lang,name:d.name,num:d.localId,set:d.set&&d.set.name||'',total:d.set&&d.set.cardCount&&d.set.cardCount.official||null,
+    img:d.image?d.image+'/low.webp':null,rarity:d.rarity||'',price:cm.trend??cm.avg??null,priceHolo:cm['trend-holo']??cm['avg-holo']??null,at:today()};
+}
+async function cardDetail(lang,id){
+  const k=id+'@'+lang; if(S.catalog[k]&&S.catalog[k].at===today())return S.catalog[k];
+  const c=normCard(await api(lang+'/cards/'+encodeURIComponent(id)),lang); S.catalog[k]=c; return c;
+}
+async function searchCatalog(p,lang){
+  const L=p.lang||lang, pg='pagination:itemsPerPage=10&pagination:page=1';
+  const nq=p.num?'localId=eq:'+numVariants(p.num).map(encodeURIComponent).join('|'):'';
+  const q=(name)=>api(L+'/cards?'+[name?'name='+encodeURIComponent(name):'',nq,pg].filter(Boolean).join('&'));
+  let list=[];
+  try{
+    list=await q(p.name);
+    if(!list.length&&L==='ja'&&p.name&&/[a-z]/i.test(p.name)){ // nombre occidental para carta japonesa: buscar por Pokédex
+      const en=await api('en/cards?name='+encodeURIComponent(p.name)+'&pagination:itemsPerPage=1&pagination:page=1');
+      if(en[0]){const d=await api('en/cards/'+en[0].id);const dex=d.dexId&&d.dexId[0];
+        if(dex)list=await api('ja/cards?dexId=eq:'+dex+(nq?'&'+nq:'')+'&'+pg).catch(()=>[]);}
+      if(!list.length&&nq)list=await q('');
+    }
+    if(!list.length&&p.name&&nq)list=await q(p.name.split(' ')[0]);
+  }catch(e){
+    demoCatalogUsed=true;
+    const n=p.name.toLowerCase(), nv=p.num?numVariants(p.num).map(x=>x.toUpperCase()):null;
+    return DEMO.filter(c=>(!n||c.name.toLowerCase().includes(n))&&(!nv||nv.includes(c.num.toUpperCase()))).map(c=>({...c,lang:L})).slice(0,8);
+  }
+  let out=await Promise.all(list.slice(0,8).map(b=>cardDetail(L,b.id).catch(()=>({id:b.id,lang:L,name:b.name,num:b.localId,set:'',img:b.image?b.image+'/low.webp':null,price:null}))));
+  if(p.total){const f=out.filter(c=>!c.total||c.total===p.total);if(f.length)out=f}
+  save(); return out;
+}
+const priceFor=(c,fin)=>c?((fin==='holo'||fin==='reverse')?(c.priceHolo??c.price):(c.price??c.priceHolo))??null:null;
+
+/* ================= OCR (Tesseract.js, en el móvil) ================= */
+let tessP=null;
+const loadTess=()=>tessP||(tessP=new Promise((res,rej)=>{const s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js';s.onload=res;s.onerror=()=>{tessP=null;rej(new Error('No se pudo cargar el OCR'))};document.head.appendChild(s)}));
+async function shrink(file){
+  const img=await createImageBitmap(file);const k=Math.min(1,1800/Math.max(img.width,img.height));
+  const c=document.createElement('canvas');c.width=img.width*k;c.height=img.height*k;c.getContext('2d').drawImage(img,0,0,c.width,c.height);return c;
+}
+function readText(t){
+  const o={num:null,lang:null};
+  const m=t.replace(/[Oo](?=\d)/g,'0').match(/([A-Z]{0,4}\s?\d{1,3})\s?\/\s?([A-Z]{0,3}\s?\d{2,3})/);
+  if(m)o.num=m[1].replace(/\s/g,'')+'/'+m[2].replace(/\s/g,'');
+  if(/[぀-ヿ一-鿿]{2,}/.test(t))o.lang='jp';
+  else if(/Debilidad|Resistencia|Retirada/i.test(t))o.lang='es';
+  else if(/Debolezza|Resistenza|Ritirata/i.test(t))o.lang='it';
+  else if(/Faiblesse|R[ée]sistance|Retraite|\bPV\b/i.test(t))o.lang='fr';
+  else if(/Schw[äa]che|Widerstand|R[üu]ckzug|\bKP\b/i.test(t))o.lang='de';
+  else if(/Fraqueza|Resist[êe]ncia|Recuo/i.test(t))o.lang='pt';
+  else if(/Weakness|Resistance|Retreat|\bHP\b/i.test(t))o.lang='en';
+  return o;
+}
+async function ocr(file,status){
+  status('Cargando lector de texto…');await loadTess();
+  const canvas=await shrink(file);status('Leyendo la carta…');
+  const w=await Tesseract.createWorker(['eng','jpn']);
+  try{const {data}=await w.recognize(canvas);return readText(data.text||'')}finally{w.terminate()}
+}
+
+/* ================= modelo: productos, lotes, FIFO ================= */
+const slug=s=>String(s).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
+function ensureProduct(e,o){
+  // e: carta del catálogo, {sealed:true,name}, o {manual:true,name}
+  let pid;
+  if(e.sealed)pid='s|'+slug(e.name)+'|'+o.lang;
+  else if(o.grade)pid='g|'+uid();
+  else pid=[e.manual?'m:'+slug(e.name):e.id,o.lang,o.finish,o.cond].join('|');
+  let p=S.products[pid];
+  if(!p){
+    p=S.products[pid]={pid,kind:e.sealed?'sealed':'card',cardId:e.id||null,name:e.name,set:e.set||'',num:e.num||'',total:e.total||null,
+      lang:o.lang,finish:e.sealed?null:o.finish,cond:e.sealed?null:o.cond,grade:o.grade||null,img:e.img||null,
+      mkt:e.sealed?null:priceFor(e,o.finish),mktAt:e.at||null,mktManual:false,target:null,loc:'',manual:!!e.manual,created:today()};
+  }
+  if(o.loc)p.loc=o.loc; if(o.target)p.target=o.target;
+  return pid;
+}
+const lotsOf=pid=>S.lots.filter(l=>l.pid===pid).sort((a,b)=>a.date<b.date?-1:a.date>b.date?1:0);
+const stock=pid=>S.lots.reduce((s,l)=>l.pid===pid?s+l.left:s,0);
+const costLeft=pid=>S.lots.reduce((s,l)=>l.pid===pid?s+l.left*l.unit:s,0);
+function fifo(pid,qty,apply){
+  const out=[];let need=qty;
+  for(const l of lotsOf(pid)){if(need<=0)break;const t=Math.min(l.left,need);if(t>0){out.push({lot:l.id,qty:t,unit:l.unit});if(apply)l.left-=t;need-=t}}
+  if(need>0)throw new Error('No hay stock suficiente');
+  return out;
+}
+const allocCost=a=>a.reduce((s,x)=>s+x.qty*x.unit,0);
+function addLot(pid,qty,unit,date,src,mid){const l={id:uid(),pid,qty,left:qty,unit:r2(unit),date,src,mid};S.lots.push(l);return l.id}
+function splitCost(total,lines){ // reparte un coste total entre líneas según valor de mercado
+  const fixed=lines.filter(l=>l.unitOverride!=null&&l.unitOverride!=='');
+  const fixedSum=fixed.reduce((s,l)=>s+num(l.unitOverride)*l.qty,0);
+  const free=lines.filter(l=>!fixed.includes(l));
+  const prices=free.map(l=>l.mkt).filter(v=>v>0);const avg=prices.length?prices.reduce((a,b)=>a+b,0)/prices.length:1;
+  const w=free.map(l=>(l.mkt>0?l.mkt:avg)*l.qty);const W=w.reduce((a,b)=>a+b,0)||1;
+  const rest=Math.max(0,total-fixedSum);
+  return lines.map(l=>fixed.includes(l)?num(l.unitOverride):r2(rest*w[free.indexOf(l)]/W/l.qty));
+}
+const pName=p=>p?p.name:'(borrada)';
+function pDesc(p){
+  if(!p)return'';
+  if(p.kind==='sealed')return[p.set,LNAME[p.lang]].filter(Boolean).join(' · ');
+  const g=p.grade?(p.grade.st==='sending'?p.grade.co+' · en grading':p.grade.co+' '+p.grade.g):null;
+  return[p.set,p.num?(p.num+(p.total?'/'+p.total:'')):'',LNAME[p.lang],g||p.cond,p.finish&&p.finish!=='normal'?FNAME[p.finish]:''].filter(Boolean).join(' · ');
+}
+const thumb=(p,lg)=>`<div class="thumb${lg?' lg':''}">${esc(p&&p.kind==='sealed'?'Sellado':(p&&p.num||'').slice(0,6))}${p&&p.img?`<img src="${esc(p.img)}" alt="" loading="lazy" onerror="this.remove()">`:''}</div>`;
+const mktVal=p=>p.mkt!=null?p.mkt:null;
+
+/* ================= métricas por movimiento ================= */
+function revenue(m){return m.lines.reduce((s,l)=>s+l.qty*l.price,0)}
+function cashOf(m){
+  switch(m.type){
+    case'buy':return-(m.total+(m.ship||0));
+    case'sale':return revenue(m)-(m.fee||0)-(m.ship||0);
+    case'trade':return m.cash||0;
+    case'grade':return-(m.fee||0);
+    case'expense':return-m.amount;
+    default:return 0;
+  }
+}
+function profitOf(m){
+  if(m.type==='sale')return revenue(m)-(m.fee||0)-(m.ship||0)-m.lines.reduce((s,l)=>s+allocCost(l.alloc),0);
+  if(m.type==='trade')return m.gain||0;
+  if(m.type==='expense')return-m.amount;
+  return 0;
+}
+function saleLineProfit(m,l){const rev=revenue(m)||1;const share=(m.fee+(m.ship||0))*(l.qty*l.price)/rev;return l.qty*l.price-share-allocCost(l.alloc)}
+function moveTitle(m){
+  const P=S.products;
+  switch(m.type){
+    case'buy':return'Compra · '+(m.lines.length===1?pName(P[m.lines[0].pid]):m.lines.length+' artículos');
+    case'sale':return'Venta · '+(m.lines.length===1?pName(P[m.lines[0].pid]):m.lines.length+' cartas')+' · '+m.channel;
+    case'trade':return'Intercambio · '+m.give.map(g=>pName(P[g.pid])).join(', ')+' ⇄ '+m.get.map(g=>pName(P[g.pid])).join(', ');
+    case'open':return'Abierto · '+pName(P[m.src.pid])+' · '+m.get.length+' cartas';
+    case'grade':return'A gradear · '+pName(P[m.to]);
+    case'expense':return'Gasto · '+m.cat+(m.note?' · '+m.note:'');
+    case'capital':return(m.amount>=0?'Aportación':'Retirada')+(m.note?' · '+m.note:'');
+  }
+}
+function undoMove(id){
+  const m=S.moves.find(x=>x.id===id); if(!m)return'No encontrado';
+  const created=S.lots.filter(l=>l.mid===id);
+  if(created.some(l=>l.left!==l.qty))return'Algunas cartas de esta operación ya se han vendido o movido. Deshaz antes esas operaciones.';
+  const restore=a=>a.forEach(x=>{const l=S.lots.find(y=>y.id===x.lot);if(l)l.left+=x.qty});
+  if(m.type==='sale')m.lines.forEach(l=>restore(l.alloc));
+  if(m.type==='trade')m.give.forEach(g=>restore(g.alloc));
+  if(m.type==='open')restore(m.src.alloc);
+  if(m.type==='grade')restore(m.from.alloc);
+  S.lots=S.lots.filter(l=>l.mid!==id);
+  S.moves=S.moves.filter(x=>x!==m);
+  for(const pid in S.products)if(!S.lots.some(l=>l.pid===pid))delete S.products[pid];
+  save();return null;
+}
+
+/* ================= UI base ================= */
+function toast(msg,undo){
+  const h=$('#toastHost');h.innerHTML=`<div class="toast" role="status"><span>${esc(msg)}</span>${undo?'<button>Deshacer</button>':''}</div>`;
+  if(undo)$('button',h).onclick=()=>{h.innerHTML='';undo()};
+  clearTimeout(toast.t);toast.t=setTimeout(()=>h.innerHTML='',undo?6000:2800);
+}
+function sheet(title,html,mount){
+  const sc=$('#scrim');sc.hidden=false;document.body.classList.add('lock');
+  sc.innerHTML=`<div class="sheet" role="dialog" aria-label="${esc(title)}"><header><h2>${esc(title)}</h2><button class="x" aria-label="Cerrar">×</button></header><div class="body">${html}</div></div>`;
+  $('.x',sc).onclick=closeSheet; sc.onclick=e=>{if(e.target===sc)closeSheet()};
+  if(mount)mount($('.body',sc));
+}
+function closeSheet(){$('#scrim').hidden=true;$('#scrim').innerHTML='';document.body.classList.remove('lock');}
+const chipRow=(name,opts,val)=>`<div class="chips" data-chips="${name}">${opts.map(([v,l])=>`<button type="button" class="chip" data-v="${esc(v)}" aria-pressed="${v===val}">${esc(l)}</button>`).join('')}</div>`;
+function bindChips(root,name,cb){const row=$(`[data-chips="${name}"]`,root);if(!row)return;row.onclick=e=>{const b=e.target.closest('.chip');if(!b)return;$$('.chip',row).forEach(x=>x.setAttribute('aria-pressed',x===b));cb(b.dataset.v)}}
+const confirmIn=(btn,label,fn)=>{if(btn.dataset.arm){fn();return}btn.dataset.arm=1;const t=btn.textContent;btn.textContent=label;setTimeout(()=>{if(btn.isConnected){btn.textContent=t;delete btn.dataset.arm}},3500)};
+
+/* ---------- buscador del catálogo (barra inteligente + foto) ---------- */
+function catalogPicker(root,{onPick,sealed}){
+  root.innerHTML=`<div class="bar"><input class="i q" placeholder="Ej: Charizard ex 199 ES" autocomplete="off" autocapitalize="off" enterkeyhint="search" aria-label="Buscar carta">
+  <label class="cam" aria-label="Leer carta con foto"><svg class="ic" viewBox="0 0 24 24"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg><input type="file" accept="image/*" capture="environment" hidden></label></div>
+  <div class="hint">Nombre, número e idioma. Extras: <b>rev</b>, <b>holo</b>, <b>psa10</b>, <b>nm</b></div><div class="res"></div>`;
+  const inp=$('.q',root),hint=$('.hint',root),res=$('.res',root);let seq=0,t;
+  const run=async()=>{
+    const q=inp.value.trim(),p=parseQ(q),my=++seq;
+    if(!p.name&&!p.num){res.innerHTML='';return}
+    hint.textContent='Buscando…';
+    const list=await searchCatalog(p,S.settings.lang);
+    if(my!==seq)return;
+    const L=p.lang||S.settings.lang;
+    hint.innerHTML=`${p.name?'<b>'+esc(p.name)+'</b>':''}${p.num?' · nº <b>'+esc(p.num)+(p.total?'/'+p.total:'')+'</b>':''} · <b>${LNAME[L]}</b>${p.grade?' · <b>'+p.grade.co+' '+esc(p.grade.g)+'</b>':''}${demoCatalogUsed?' · catálogo de ejemplo (sin conexión)':''}`;
+    res.innerHTML=`<div class="box">${list.map((c,i)=>`<div class="row tap" data-i="${i}">${thumb({num:c.num,img:c.img})}<div class="grow"><div class="t">${esc(c.name)}</div><div class="d">${esc([c.set,c.num+(c.total?'/'+c.total:''),c.rarity].filter(Boolean).join(' · '))}</div></div><div class="r num small">${eur(priceFor(c,p.finish))}</div></div>`).join('')||'<div class="row mut small">Sin resultados en el catálogo.</div>'}
+      <div class="row tap" data-manual><div class="grow"><div class="t">Añadir como carta manual</div><div class="d">«${esc(p.name||q)}» · se marcará para revisar</div></div><span class="tag warn">manual</span></div></div>`;
+    $$('[data-i]',res).forEach(r=>r.onclick=()=>onPick(list[+r.dataset.i],p));
+    $('[data-manual]',res).onclick=()=>onPick({manual:true,name:p.name||q,num:p.num||'',total:p.total,id:null},p);
+  };
+  inp.oninput=()=>{clearTimeout(t);t=setTimeout(run,380)};
+  inp.onkeydown=e=>{if(e.key==='Enter'){clearTimeout(t);run()}};
+  $('input[type=file]',root).onchange=async e=>{
+    const f=e.target.files[0];if(!f)return;
+    try{const o=await ocr(f,s=>hint.textContent=s);
+      if(!o.num&&!o.lang){hint.textContent='No he podido leer el número. Escríbelo a mano.';return}
+      inp.value=[inp.value.replace(/\b\d{1,3}(\/\d{1,3})?\b|\b(es|en|jp|ja|fr|de|it|pt)\b/gi,'').trim(),o.num,o.lang].filter(Boolean).join(' ');run();
+    }catch(err){hint.textContent='La lectura por foto no está disponible aquí ('+err.message+'). Escríbelo a mano.'}
+    e.target.value='';
+  };
+  setTimeout(()=>inp.focus(),60);
+}
+/* opciones de una carta elegida */
+function optionsForm(root,e,p,{grade=true,more=true}={}){
+  const o={lang:p.lang||S.settings.lang,finish:p.finish||'normal',cond:p.cond||S.settings.cond,grade:p.grade?{co:p.grade.co,g:p.grade.g||GSCALE[p.grade.co][0],cert:'',st:'graded'}:null,loc:'',target:null,qty:1};
+  const draw=()=>{
+    root.innerHTML=`<div class="row" style="border:0">${thumb({num:e.num,img:e.img})}<div class="grow"><div class="t">${esc(e.name)}${e.manual?' <span class="tag warn">manual</span>':''}</div><div class="d">${esc([e.set,e.num&&(e.num+(e.total?'/'+e.total:''))].filter(Boolean).join(' · '))}</div></div></div>
+    <label class="f">Idioma</label>${chipRow('lang',LANGS,o.lang)}
+    ${e.sealed?'':`<label class="f">Acabado</label>${chipRow('fin',FINS,o.finish)}
+    <label class="f">Estado</label>${o.grade?'<div class="small mut">Gradeada: el estado lo da la nota.</div>':chipRow('cond',CONDS.map(c=>[c,c]),o.cond)}`}
+    ${more?`<details class="more"${o.grade?' open':''}><summary>Más opciones</summary>
+      ${grade&&!e.sealed?`<label class="f">Gradeada</label>${chipRow('gco',[['','No'],...GCOS.map(c=>[c,c])],o.grade?o.grade.co:'')}
+      ${o.grade?`<div class="grid2"><div><label class="f">Nota</label><select class="i" data-k="g">${GSCALE[o.grade.co].map(g=>`<option${g===o.grade.g?' selected':''}>${g}</option>`).join('')}</select></div><div><label class="f">Nº certificado</label><input class="i" data-k="cert" inputmode="numeric" value="${esc(o.grade.cert)}"></div></div>`:''}`:''}
+      <div class="grid2"><div><label class="f">Ubicación</label><input class="i" data-k="loc" placeholder="Carpeta 2 · p5" value="${esc(o.loc)}"></div>
+      <div><label class="f">Precio objetivo</label><input class="i" data-k="target" inputmode="decimal" placeholder="€" value="${o.target??''}"></div></div></details>`:''}`;
+    bindChips(root,'lang',v=>o.lang=v);bindChips(root,'fin',v=>o.finish=v);bindChips(root,'cond',v=>o.cond=v);
+    bindChips(root,'gco',v=>{o.grade=v?{co:v,g:GSCALE[v][0],cert:'',st:'graded'}:null;draw()});
+    $$('[data-k]',root).forEach(i=>i.oninput=()=>{const k=i.dataset.k;if(k==='g'||k==='cert')o.grade[k]=i.value;else if(k==='target')o.target=i.value?num(i.value):null;else o[k]=i.value});
+  };
+  draw();return o;
+}
+
+/* ---------- constructor de líneas de cartas (compra, recibir, abrir) ---------- */
+function cardLines(root,{sealed,grade=true,onChange}){
+  const lines=[];let mode='card';
+  const draw=()=>{
+    root.innerHTML=`${lines.map((l,i)=>`<div class="line-card"><div class="split"><div class="grow" style="min-width:0"><div class="t" style="font-weight:500">${esc(l.e.name)}</div><div class="d small mut">${esc(l.desc)}</div></div>
+      <button class="linkb" data-del="${i}" style="padding:0">Quitar</button></div>
+      <div class="split" style="margin-top:8px;align-items:center"><div class="qty"><button data-dq="${i}" data-d="-1" aria-label="Menos">−</button><input class="i" data-q="${i}" inputmode="numeric" value="${l.qty}" ${l.o.grade?'disabled':''}><button data-dq="${i}" data-d="1" aria-label="Más" ${l.o.grade?'disabled':''}>+</button></div>
+      <div class="small mut">${l.mkt!=null?'Mercado '+eur(l.mkt):'Sin precio'}</div></div></div>`).join('')}
+      <div class="add"></div>`;
+    $$('[data-del]',root).forEach(b=>b.onclick=()=>{lines.splice(+b.dataset.del,1);draw();onChange()});
+    $$('[data-dq]',root).forEach(b=>b.onclick=()=>{const l=lines[+b.dataset.dq];l.qty=Math.max(1,l.qty+ +b.dataset.d);draw();onChange()});
+    $$('[data-q]',root).forEach(i=>i.onchange=()=>{lines[+i.dataset.q].qty=Math.max(1,parseInt(i.value)||1);draw();onChange()});
+    const add=$('.add',root);
+    if(!lines.length||add.dataset.open){openPicker(add)}else{add.innerHTML='<button class="btn full sm" type="button">+ Añadir otra</button>';$('button',add).onclick=()=>{add.dataset.open=1;openPicker(add)}}
+  };
+  const openPicker=add=>{
+    add.innerHTML=`${sealed?`<div class="seg"><button type="button" data-m="card" aria-pressed="${mode==='card'}">Carta</button><button type="button" data-m="sealed" aria-pressed="${mode==='sealed'}">Sellado</button></div>`:''}<div class="pk"></div>`;
+    $$('[data-m]',add).forEach(b=>b.onclick=()=>{mode=b.dataset.m;openPicker(add)});
+    const pk=$('.pk',add);
+    if(mode==='sealed'){
+      const s={type:SEALED[0],exp:''};
+      pk.innerHTML=`<label class="f">Tipo</label>${chipRow('st',SEALED.map(x=>[x,x]),s.type)}<label class="f">Expansión</label><input class="i" data-exp placeholder="Ej: Surging Sparks"><div class="opt"></div><button class="btn pri full" type="button" style="margin-top:14px">Añadir</button>`;
+      bindChips(pk,'st',v=>s.type=v);
+      const o=optionsForm($('.opt',pk),{sealed:true,name:'Sellado'},{}, {grade:false,more:false});
+      $('.opt .row',pk).remove();
+      $('.btn',pk).onclick=()=>{const exp=$('[data-exp]',pk).value.trim();if(!exp){$('[data-exp]',pk).focus();return}
+        const e={sealed:true,name:s.type+' '+exp,set:exp};lines.push({e,o:{...o},qty:1,mkt:null,desc:'Sellado · '+LNAME[o.lang]});draw();onChange()};
+      return;
+    }
+    catalogPicker(pk,{onPick:(e,p)=>{
+      pk.innerHTML='<div class="opt"></div><button class="btn pri full" type="button" style="margin-top:16px">Añadir</button>';
+      const o=optionsForm($('.opt',pk),e,p,{grade});
+      $('.btn',pk).onclick=()=>{
+        const oo=JSON.parse(JSON.stringify(o));
+        const desc=[e.set,e.num,LNAME[oo.lang],oo.grade?oo.grade.co+' '+oo.grade.g:oo.cond,oo.finish!=='normal'?FNAME[oo.finish]:''].filter(Boolean).join(' · ');
+        lines.push({e,o:oo,qty:1,mkt:oo.grade?(oo.target||null):priceFor(e,oo.finish),desc});
+        delete add.dataset.open;draw();onChange();
+      };
+    }});
+  };
+  draw();return lines;
+}
+
+/* ---------- selector de inventario (vender, dar, abrir) ---------- */
+function invLines(root,{price,onChange,filter,init}){
+  const lines=init||[];
+  const draw=()=>{
+    root.innerHTML=`${lines.map((l,i)=>{const p=S.products[l.pid];return`<div class="line-card"><div class="split"><div style="min-width:0"><div style="font-weight:500">${esc(p.name)}</div><div class="small mut">${esc(pDesc(p))} · stock ${stock(l.pid)}</div></div><button class="linkb" data-del="${i}" style="padding:0">Quitar</button></div>
+      <div class="split" style="margin-top:8px;align-items:center"><div class="qty"><button data-dq="${i}" data-d="-1" aria-label="Menos">−</button><input class="i" data-q="${i}" inputmode="numeric" value="${l.qty}"><button data-dq="${i}" data-d="1" aria-label="Más">+</button></div>
+      ${price?`<div style="width:120px"><input class="i" data-p="${i}" inputmode="decimal" placeholder="€ / ud" value="${l.price??''}" aria-label="Precio por unidad"></div>`:`<div class="small mut">Coste FIFO ${eur(safeFifo(l.pid,l.qty))}</div>`}</div></div>`}).join('')}<div class="pick"></div>`;
+    $$('[data-del]',root).forEach(b=>b.onclick=()=>{lines.splice(+b.dataset.del,1);draw();onChange()});
+    $$('[data-dq]',root).forEach(b=>b.onclick=()=>{const l=lines[+b.dataset.dq];l.qty=Math.min(stock(l.pid),Math.max(1,l.qty+ +b.dataset.d));draw();onChange()});
+    $$('[data-q]',root).forEach(i=>i.onchange=()=>{const l=lines[+i.dataset.q];l.qty=Math.min(stock(l.pid),Math.max(1,parseInt(i.value)||1));draw();onChange()});
+    $$('[data-p]',root).forEach(i=>i.oninput=()=>{lines[+i.dataset.p].price=i.value===''?null:num(i.value);onChange()});
+    const pick=$('.pick',root);
+    pick.innerHTML=`<input class="i" placeholder="Busca en tu inventario: nombre, nº, idioma…" autocomplete="off" aria-label="Buscar en inventario"><div class="r" style="margin-top:8px"></div>`;
+    const inp=$('input',pick),r=$('.r',pick);
+    const show=()=>{const items=searchInv(inp.value).filter(p=>!lines.some(l=>l.pid===p.pid)&&(!filter||filter(p))).slice(0,inp.value?8:4);
+      r.innerHTML=items.length?`<div class="box">${items.map(p=>`<div class="row tap" data-pid="${esc(p.pid)}">${thumb(p)}<div class="grow"><div class="t">${esc(p.name)}</div><div class="d">${esc(pDesc(p))}</div></div><div class="r small"><div class="num">${stock(p.pid)} ud</div><div class="mut num">${eur(mktVal(p))}</div></div></div>`).join('')}</div>`:'<div class="small mut">Nada en stock con esa búsqueda.</div>';
+      $$('[data-pid]',r).forEach(x=>x.onclick=()=>{const p=S.products[x.dataset.pid];lines.push({pid:p.pid,qty:1,price:price?(p.target||mktVal(p)||null):null});draw();onChange()});};
+    inp.oninput=show;show();
+  };
+  draw();return lines;
+}
+const safeFifo=(pid,q)=>{try{return allocCost(fifo(pid,q,false))}catch(e){return null}};
+function searchInv(q){
+  const p=parseQ(q||''),n=p.name.toLowerCase();
+  return Object.values(S.products).filter(x=>stock(x.pid)>0).filter(x=>
+    (!n||(x.name+' '+x.set+' '+(x.loc||'')).toLowerCase().includes(n))&&(!p.num||numVariants(p.num).map(v=>v.toUpperCase()).includes(String(x.num).toUpperCase()))&&(!p.lang||x.lang===p.lang)&&(!p.grade||(x.grade&&x.grade.co===p.grade.co)))
+   .sort((a,b)=>a.name.localeCompare(b.name));
+}
+
+/* ================= flujos (hojas) ================= */
+function newOp(){
+  sheet('Nueva operación',`<div class="actions">
+    <button class="act" data-a="buy"><b>Comprar</b><span>Cartas, lotes o sellado</span></button>
+    <button class="act" data-a="sell"><b>Vender</b><span>FIFO automático</span></button>
+    <button class="act" data-a="trade"><b>Intercambio</b><span>Das y recibes cartas</span></button>
+    <button class="act" data-a="open"><b>Abrir sellado</b><span>Reparte el coste</span></button>
+    <button class="act" data-a="exp"><b>Gasto</b><span>Material, envíos…</span></button>
+    <button class="act" data-a="cap"><b>Aportación / retirada</b><span>Dinero tuyo</span></button></div>`,b=>{
+    $$('[data-a]',b).forEach(x=>x.onclick=()=>({buy:flowBuy,sell:()=>flowSell(),trade:flowTrade,open:()=>flowOpen(),exp:flowExpense,cap:flowCapital})[x.dataset.a]());
+  });
+}
+const dateField=(v=today())=>`<label class="f">Fecha</label><input class="i" type="date" data-date value="${v}">`;
+
+function flowBuy(){
+  sheet('Comprar',`<div class="ln"></div><div class="tot"></div>`,b=>{
+    const tot=$('.tot',b);
+    const lines=cardLines($('.ln',b),{sealed:true,onChange:()=>drawTot()});
+    tot.innerHTML=`<hr><div class="grid2"><div><label class="f">Total pagado</label><input class="i" data-total inputmode="decimal" placeholder="€"></div><div><label class="f">Envío / gastos</label><input class="i" data-ship inputmode="decimal" placeholder="0"></div></div>${dateField()}<div class="prev"></div><button class="btn pri full" data-save style="margin-top:16px" disabled>Guardar compra</button>`;
+    const drawTot=()=>{
+      const total=num($('[data-total]',b).value);
+      const units=lines.length?splitCost(total,lines):[];
+      $('.prev',b).innerHTML=lines.length>1?`<label class="f">Reparto del coste ${lines.some(l=>l.mkt)?'(según valor de mercado)':'(a partes iguales)'}</label><div class="box">${lines.map((l,i)=>`<div class="row"><div class="grow"><div class="t">${esc(l.e.name)}</div><div class="d">${l.qty} ud</div></div><input class="i" style="width:100px;min-height:38px" data-u="${i}" inputmode="decimal" value="${units[i]}" aria-label="Coste por unidad"></div>`).join('')}</div>`:'';
+      $$('[data-u]',b).forEach(inp=>inp.onchange=()=>{lines[+inp.dataset.u].unitOverride=inp.value;drawTot()});
+      $('[data-save]',b).disabled=!lines.length||$('[data-total]',b).value==='';
+    };
+    $('[data-total]',b).oninput=drawTot;
+    $('[data-save]',b).onclick=()=>{
+      const total=num($('[data-total]',b).value),ship=num($('[data-ship]',b).value),date=$('[data-date]',b).value||today();
+      const units=splitCost(total,lines),mid=uid();
+      const ml=lines.map((l,i)=>{const pid=ensureProduct(l.e,l.o);addLot(pid,l.qty,units[i],date,'compra',mid);return{pid,qty:l.qty,unit:units[i]}});
+      S.moves.push({id:mid,type:'buy',date,total,ship,lines:ml});save();closeSheet();render();
+      toast('Compra guardada',()=>{undoMove(mid);render()});
+    };
+  });
+}
+
+function flowSell(prePid){
+  const ch=S.settings.channels;let channel=ch[0].n,feeEdited=false;
+  sheet('Vender',`<div class="ln"></div><hr><label class="f">Canal</label>${chipRow('ch',ch.map(c=>[c.n,c.n]),channel)}
+    <div class="grid2"><div><label class="f">Comisión</label><input class="i" data-fee inputmode="decimal"></div><div><label class="f">Envío que pagas</label><input class="i" data-ship inputmode="decimal" placeholder="0"></div></div>${dateField()}
+    <div class="box prev" style="margin-top:16px"></div><button class="btn pri full" data-save style="margin-top:16px" disabled>Guardar venta</button>`,b=>{
+    const init=prePid?[{pid:prePid,qty:1,price:S.products[prePid].target||mktVal(S.products[prePid])||null}]:[];
+    const lines=invLines($('.ln',b),{price:true,onChange:()=>upd(),init,filter:p=>!(p.grade&&p.grade.st==='sending')});
+    const feeI=$('[data-fee]',b);
+    const upd=()=>{
+      const rev=lines.reduce((s,l)=>s+l.qty*(l.price||0),0);
+      const pc=(ch.find(c=>c.n===channel)||{fee:0}).fee;
+      if(!feeEdited)feeI.value=r2(rev*pc/100)||'';
+      const fee=num(feeI.value),ship=num($('[data-ship]',b).value);
+      const cost=lines.reduce((s,l)=>s+(safeFifo(l.pid,l.qty)||0),0);
+      const pr=rev-fee-ship-cost;
+      $('.prev',b).innerHTML=`<div class="sum"><span>Ingresos</span><span class="num">${eur(rev)}</span></div><div class="sum"><span class="mut">Comisión + envío</span><span class="num">−${eur(fee+ship)}</span></div><div class="sum"><span class="mut">Coste FIFO</span><span class="num">−${eur(cost)}</span></div><div class="sum tot"><span>Beneficio</span><span class="num ${cls(pr)}">${sgn(pr)} <span class="small mut">${pct(cost?pr/cost:null)}</span></span></div>`;
+      $('[data-save]',b).disabled=!lines.length||lines.some(l=>l.price==null);
+    };
+    bindChips(b,'ch',v=>{channel=v;feeEdited=false;upd()});
+    feeI.oninput=()=>{feeEdited=true;upd()};$('[data-ship]',b).oninput=upd;
+    upd();
+    $('[data-save]',b).onclick=()=>{
+      const date=$('[data-date]',b).value||today(),mid=uid();
+      try{
+        lines.forEach(l=>{if(stock(l.pid)<l.qty)throw new Error('Stock insuficiente de '+S.products[l.pid].name)});
+        const ml=lines.map(l=>({pid:l.pid,qty:l.qty,price:num(l.price),alloc:fifo(l.pid,l.qty,true)}));
+        S.moves.push({id:mid,type:'sale',date,channel,fee:num(feeI.value),ship:num($('[data-ship]',b).value),lines:ml});
+        save();closeSheet();render();toast('Venta guardada',()=>{undoMove(mid);render()});
+      }catch(e){toast(e.message)}
+    };
+  });
+}
+
+function flowTrade(){
+  let dir='in';
+  sheet('Intercambio',`<h3 style="margin-top:4px">Das</h3><div class="give"></div><h3>Recibes</h3><div class="get"></div><hr>
+    <label class="f">Dinero extra</label><div class="seg"><button type="button" data-dir="in" aria-pressed="true">Me dan</button><button type="button" data-dir="out" aria-pressed="false">Pongo yo</button></div>
+    <input class="i" data-cash inputmode="decimal" placeholder="0 €">${dateField()}<div class="box prev" style="margin-top:16px"></div><button class="btn pri full" data-save style="margin-top:16px" disabled>Guardar intercambio</button>`,b=>{
+    const give=invLines($('.give',b),{price:false,onChange:()=>upd()});
+    const get=cardLines($('.get',b),{sealed:true,onChange:()=>upd()});
+    $$('[data-dir]',b).forEach(x=>x.onclick=()=>{dir=x.dataset.dir;$$('[data-dir]',b).forEach(y=>y.setAttribute('aria-pressed',y===x));upd()});
+    $('[data-cash]',b).oninput=()=>upd();
+    const calc=()=>{const gc=give.reduce((s,l)=>s+(safeFifo(l.pid,l.qty)||0),0);const cash=(dir==='in'?1:-1)*num($('[data-cash]',b).value);const basis=gc-cash;return{gc,cash,basis:Math.max(0,basis),gain:basis<0?-basis:0}};
+    const upd=()=>{const c=calc();
+      $('.prev',b).innerHTML=`<div class="sum"><span class="mut">Coste de lo que das</span><span class="num">${eur(c.gc)}</span></div><div class="sum"><span class="mut">Dinero ${c.cash>=0?'recibido':'puesto'}</span><span class="num">${eur(Math.abs(c.cash))}</span></div><div class="sum tot"><span>Coste de lo que recibes</span><span class="num">${eur(c.basis)}</span></div>${c.gain?`<div class="small pos">El dinero recibido supera tu coste: ${eur(c.gain)} cuentan como beneficio ya.</div>`:''}`;
+      $('[data-save]',b).disabled=!give.length||!get.length;};
+    upd();
+    $('[data-save]',b).onclick=()=>{
+      const c=calc(),date=$('[data-date]',b).value||today(),mid=uid();
+      try{
+        const g=give.map(l=>({pid:l.pid,qty:l.qty,alloc:fifo(l.pid,l.qty,true)}));
+        const units=splitCost(c.basis,get);
+        const gt=get.map((l,i)=>{const pid=ensureProduct(l.e,l.o);addLot(pid,l.qty,units[i],date,'intercambio',mid);S.products[pid].origin='Intercambio por '+g.map(x=>S.products[x.pid].name).join(', ');return{pid,qty:l.qty,unit:units[i]}});
+        S.moves.push({id:mid,type:'trade',date,cash:c.cash,gain:c.gain,give:g,get:gt});save();closeSheet();render();toast('Intercambio guardado',()=>{undoMove(mid);render()});
+      }catch(e){toast(e.message)}
+    };
+  });
+}
+
+function flowOpen(prePid){
+  const sealed=Object.values(S.products).filter(p=>p.kind==='sealed'&&stock(p.pid)>0);
+  if(!sealed.length){toast('No tienes producto sellado en stock');return}
+  let src=prePid||sealed[0].pid;
+  sheet('Abrir sellado',`<label class="f">Qué abres (1 unidad)</label><select class="i" data-src>${sealed.map(p=>`<option value="${esc(p.pid)}"${p.pid===src?' selected':''}>${esc(p.name)} · ${LNAME[p.lang]} · ${stock(p.pid)} ud</option>`).join('')}</select>
+    <h3>Cartas que salieron</h3><p class="small mut" style="margin-top:-4px">Añade solo las que quieras guardar o vender. El coste se reparte entre ellas según su valor.</p><div class="ln"></div>${dateField()}<div class="box prev" style="margin-top:16px"></div><button class="btn pri full" data-save style="margin-top:16px" disabled>Guardar apertura</button>`,b=>{
+    const lines=cardLines($('.ln',b),{grade:false,onChange:()=>upd()});
+    $('[data-src]',b).onchange=e=>{src=e.target.value;upd()};
+    const upd=()=>{const cost=safeFifo(src,1)||0;const u=lines.length?splitCost(cost,lines):[];
+      $('.prev',b).innerHTML=`<div class="sum"><span class="mut">Coste del sellado (FIFO)</span><span class="num">${eur(cost)}</span></div>${lines.map((l,i)=>`<div class="sum"><span>${esc(l.e.name)} × ${l.qty}</span><span class="num">${eur(u[i])} / ud</span></div>`).join('')}`;
+      $('[data-save]',b).disabled=!lines.length;};
+    upd();
+    $('[data-save]',b).onclick=()=>{
+      const date=$('[data-date]',b).value||today(),mid=uid();
+      try{const alloc=fifo(src,1,true);const u=splitCost(allocCost(alloc),lines);
+        const gt=lines.map((l,i)=>{const pid=ensureProduct(l.e,l.o);addLot(pid,l.qty,u[i],date,'sellado',mid);S.products[pid].origin='Abierta de '+S.products[src].name;return{pid,qty:l.qty,unit:u[i]}});
+        S.moves.push({id:mid,type:'open',date,src:{pid:src,alloc},get:gt});save();closeSheet();render();toast('Apertura guardada',()=>{undoMove(mid);render()});
+      }catch(e){toast(e.message)}
+    };
+  });
+}
+
+function flowGrade(pid){
+  const p=S.products[pid];let co='PSA';
+  sheet('Enviar a gradear',`<div class="row" style="border:0">${thumb(p)}<div class="grow"><div class="t">${esc(p.name)}</div><div class="d">${esc(pDesc(p))}</div></div></div>
+    <label class="f">Empresa</label>${chipRow('gco',GCOS.map(c=>[c,c]),co)}
+    <label class="f">Coste de gradear (tarifa + envíos + seguro)</label><input class="i" data-fee inputmode="decimal" placeholder="€">${dateField()}
+    <p class="small mut">Sale 1 unidad de este stock y pasa a «en grading». El coste se suma al de la carta.</p><button class="btn pri full" data-save>Enviar</button>`,b=>{
+    bindChips(b,'gco',v=>co=v);
+    $('[data-save]',b).onclick=()=>{
+      const fee=num($('[data-fee]',b).value),date=$('[data-date]',b).value||today(),mid=uid();
+      try{const alloc=fifo(pid,1,true);const npid='g|'+mid;
+        S.products[npid]={...JSON.parse(JSON.stringify(p)),pid:npid,grade:{co,g:'',cert:'',st:'sending',sent:date},mkt:null,mktAt:null,mktManual:false,target:null,created:date,origin:'Gradeada desde raw'};
+        addLot(npid,1,allocCost(alloc)+fee,date,'grading',mid);
+        S.moves.push({id:mid,type:'grade',date,fee,from:{pid,alloc},to:npid});save();closeSheet();render();toast('Enviada a gradear',()=>{undoMove(mid);render()});
+      }catch(e){toast(e.message)}
+    };
+  });
+}
+function flowReceive(pid){
+  const p=S.products[pid];
+  sheet('Recibida del grading',`<div class="row" style="border:0">${thumb(p)}<div class="grow"><div class="t">${esc(p.name)}</div><div class="d">${esc(p.grade.co)} · enviada ${esc(p.grade.sent||'')}</div></div></div>
+    <div class="grid2"><div><label class="f">Nota</label><select class="i" data-g>${GSCALE[p.grade.co].map(g=>`<option>${g}</option>`).join('')}</select></div><div><label class="f">Nº certificado</label><input class="i" data-cert inputmode="numeric"></div></div>
+    <label class="f">Valor de mercado estimado (opcional)</label><input class="i" data-mkt inputmode="decimal" placeholder="€"><button class="btn pri full" data-save style="margin-top:16px">Guardar</button>`,b=>{
+    $('[data-save]',b).onclick=()=>{p.grade={...p.grade,g:$('[data-g]',b).value,cert:$('[data-cert]',b).value.trim(),st:'graded',recv:today()};
+      const m=$('[data-mkt]',b).value;if(m){p.mkt=num(m);p.mktManual=true}save();closeSheet();render();toast('Nota guardada')};
+  });
+}
+function flowExpense(){
+  let cat=EXPCATS[0];
+  sheet('Gasto general',`<label class="f">Categoría</label>${chipRow('cat',EXPCATS.map(c=>[c,c]),cat)}<label class="f">Importe</label><input class="i" data-amt inputmode="decimal" placeholder="€"><label class="f">Nota</label><input class="i" data-note placeholder="Ej: 200 fundas">${dateField()}<button class="btn pri full" data-save style="margin-top:16px">Guardar gasto</button>`,b=>{
+    bindChips(b,'cat',v=>cat=v);
+    $('[data-save]',b).onclick=()=>{const a=num($('[data-amt]',b).value);if(!a){$('[data-amt]',b).focus();return}const mid=uid();
+      S.moves.push({id:mid,type:'expense',date:$('[data-date]',b).value||today(),cat,amount:a,note:$('[data-note]',b).value.trim()});save();closeSheet();render();toast('Gasto guardado',()=>{undoMove(mid);render()})};
+  });
+}
+function flowCapital(){
+  let dir=1;
+  sheet('Aportación / retirada',`<div class="seg"><button type="button" data-d="1" aria-pressed="true">Meto dinero</button><button type="button" data-d="-1" aria-pressed="false">Saco dinero</button></div><label class="f">Importe</label><input class="i" data-amt inputmode="decimal" placeholder="€"><label class="f">Nota</label><input class="i" data-note>${dateField()}<p class="small mut">No cuenta como beneficio ni como flujo del negocio: sirve para ver cuánto se autofinancia.</p><button class="btn pri full" data-save>Guardar</button>`,b=>{
+    $$('[data-d]',b).forEach(x=>x.onclick=()=>{dir=+x.dataset.d;$$('[data-d]',b).forEach(y=>y.setAttribute('aria-pressed',y===x))});
+    $('[data-save]',b).onclick=()=>{const a=num($('[data-amt]',b).value);if(!a)return;const mid=uid();
+      S.moves.push({id:mid,type:'capital',date:$('[data-date]',b).value||today(),amount:dir*a,note:$('[data-note]',b).value.trim()});save();closeSheet();render();toast('Guardado',()=>{undoMove(mid);render()})};
+  });
+}
+
+/* ---------- ficha de producto ---------- */
+function productSheet(pid){
+  const p=S.products[pid];if(!p)return;
+  const st=stock(pid),cl=costLeft(pid),avg=st?cl/st:null,mv=mktVal(p);
+  const sales=S.moves.filter(m=>m.type==='sale').flatMap(m=>m.lines.filter(l=>l.pid===pid).map(l=>({m,l})));
+  const real=sales.reduce((s,x)=>s+saleLineProfit(x.m,x.l),0);
+  const lots=lotsOf(pid);
+  sheet(p.name,`<div style="display:flex;gap:16px;align-items:flex-start">${thumb(p,1)}<div style="min-width:0">
+      <div class="small mut">${esc(pDesc(p))}</div>
+      ${p.grade&&p.grade.cert?`<div class="small">Cert. ${esc(p.grade.cert)}</div>`:''}
+      ${p.manual?'<div><span class="tag warn">manual · revisar</span></div>':''}
+      ${p.origin?`<div class="small mut" style="margin-top:4px">${esc(p.origin)}</div>`:''}
+      <div class="big" style="margin-top:10px">${st} <span class="small mut">ud</span></div>
+      <div class="small">Coste medio <span class="num">${eur(avg)}</span></div></div></div>
+    <div class="kpis" style="margin-top:16px">
+      <div class="kpi"><div class="l">Mercado / ud</div><div class="num" style="font-size:20px">${eur(mv)}</div><div class="s mut">${p.mktManual?'manual':p.mktAt?'Cardmarket · '+esc(p.mktAt):'sin dato'}</div></div>
+      <div class="kpi"><div class="l">Latente</div><div class="num ${cls(mv!=null?mv*st-cl:0)}" style="font-size:20px">${mv!=null&&st?sgn(mv*st-cl):'—'}</div><div class="s mut">${mv!=null&&cl?pct((mv*st-cl)/cl):''}</div></div>
+      <div class="kpi"><div class="l">Realizado</div><div class="num ${cls(real)}" style="font-size:20px">${sales.length?sgn(real):'—'}</div><div class="s mut">${sales.reduce((s,x)=>s+x.l.qty,0)} vendidas</div></div>
+      <div class="kpi"><div class="l">Objetivo</div><div class="num" style="font-size:20px">${eur(p.target)}</div><div class="s ${p.target&&avg?cls(p.target-avg):'mut'}">${p.target&&avg?pct((p.target-avg)/avg)+' s/coste':'sin objetivo'}</div></div></div>
+    <div class="grid2" style="margin-top:6px"><div><label class="f">Precio objetivo</label><input class="i" data-k="target" inputmode="decimal" value="${p.target??''}" placeholder="€"></div><div><label class="f">Valor mercado</label><input class="i" data-k="mkt" inputmode="decimal" value="${mv??''}" placeholder="€"></div></div>
+    <label class="f">Ubicación</label><input class="i" data-k="loc" value="${esc(p.loc||'')}" placeholder="Carpeta 2 · página 5">
+    <div class="chips" style="margin-top:16px">
+      ${st?`<button class="btn sm pri" data-a="sell">Vender</button>`:''}
+      ${p.kind==='card'&&!p.grade&&st?`<button class="btn sm" data-a="grade">Enviar a gradear</button>`:''}
+      ${p.grade&&p.grade.st==='sending'?`<button class="btn sm acc" data-a="recv">Marcar recibida</button>`:''}
+      ${p.kind==='sealed'&&st?`<button class="btn sm" data-a="open">Abrir</button>`:''}
+      ${p.cardId&&!p.manual&&!p.grade?`<button class="btn sm" data-a="price">Actualizar precio</button>`:''}</div>
+    <h3>Lotes (FIFO)</h3><div class="box">${lots.map(l=>`<div class="row"><div class="grow"><div class="t">${esc(l.date)} · ${esc(l.src)}</div><div class="d">${l.left} de ${l.qty} en stock · ${days(l.date,today())} días</div></div><div class="r num">${eur(l.unit)}</div></div>`).join('')||'<div class="row mut">Sin lotes</div>'}</div>
+    ${sales.length?`<h3>Ventas</h3><div class="box">${sales.map(x=>`<div class="row"><div class="grow"><div class="t">${esc(x.m.date)} · ${esc(x.m.channel)}</div><div class="d">${x.l.qty} × ${eur(x.l.price)}${p.target?' · objetivo '+eur(p.target):''}</div></div><div class="r num ${cls(saleLineProfit(x.m,x.l))}">${sgn(saleLineProfit(x.m,x.l))}</div></div>`).join('')}</div>`:''}`,b=>{
+    $$('[data-k]',b).forEach(i=>i.onchange=()=>{const k=i.dataset.k;if(k==='loc')p.loc=i.value.trim();else if(k==='target')p.target=i.value===''?null:num(i.value);else{p.mkt=i.value===''?null:num(i.value);p.mktManual=true}save();render();toast('Guardado')});
+    $$('[data-a]',b).forEach(x=>x.onclick=async()=>{const a=x.dataset.a;
+      if(a==='sell')flowSell(pid);if(a==='grade')flowGrade(pid);if(a==='recv')flowReceive(pid);if(a==='open')flowOpen(pid);
+      if(a==='price'){x.textContent='Actualizando…';try{delete S.catalog[p.cardId+'@'+p.lang];const c=await cardDetail(p.lang,p.cardId);p.mkt=priceFor(c,p.finish);p.mktAt=today();p.mktManual=false;save();render();productSheet(pid)}catch(e){x.textContent='Sin conexión con el catálogo'}}
+    });
+  });
+}
+
+/* ================= cálculos para Inicio y Stats ================= */
+function inPeriod(d,per){const t=today();if(per==='m')return mk(d)===mk(t);if(per==='y')return d.slice(0,4)===t.slice(0,4);if(per==='3m'){const x=new Date();x.setMonth(x.getMonth()-2,1);return d>=x.toISOString().slice(0,7)}return true}
+function lastMonths(n){const out=[],d=new Date();d.setDate(1);for(let i=n-1;i>=0;i--){const x=new Date(d);x.setMonth(d.getMonth()-i);out.push(x.getFullYear()+'-'+String(x.getMonth()+1).padStart(2,'0'))}return out}
+function monthAgg(keys){
+  const m=Object.fromEntries(keys.map(k=>[k,{profit:0,cin:0,cout:0,sales:0}]));
+  for(const mv of S.moves){const k=mk(mv.date);if(!m[k])continue;m[k].profit+=profitOf(mv);const c=cashOf(mv);if(c>0)m[k].cin+=c;else m[k].cout-=c;if(mv.type==='sale')m[k].sales+=mv.lines.reduce((s,l)=>s+l.qty,0)}
+  return keys.map(k=>({k,...m[k],net:m[k].cin-m[k].cout}));
+}
+function invTotals(){
+  let val=0,cost=0,units=0,unpriced=0;
+  for(const p of Object.values(S.products)){const st=stock(p.pid);if(!st)continue;const c=costLeft(p.pid);cost+=c;units+=st;const mv=mktVal(p);if(mv!=null)val+=mv*st;else{val+=c;unpriced+=st}}
+  return{val,cost,units,unpriced,latent:val-cost};
+}
+
+/* ================= vistas ================= */
+let charts=[];
+function render(){
+  charts.forEach(c=>c.disconnect());charts=[];
+  $$('.nav [data-tab]').forEach(b=>b.setAttribute('aria-current',b.dataset.tab===tab));
+  ({home:vHome,inv:vInv,stats:vStats,set:vSet})[tab]($('#view'));
+  window.scrollTo(0,0);
+}
+function ring(v,goal,label,valTxt){
+  const f=goal>0?Math.max(0,Math.min(1,v/goal)):0,R=38,C=2*Math.PI*R;
+  return`<div><svg viewBox="0 0 96 96" role="img" aria-label="${esc(label)} ${Math.round(f*100)} %"><circle cx="48" cy="48" r="${R}" fill="none" stroke="var(--soft)" stroke-width="9"/><circle cx="48" cy="48" r="${R}" fill="none" stroke="${f>=1?'var(--pos)':'var(--acc)'}" stroke-width="9" stroke-linecap="round" stroke-dasharray="${C*f} ${C}" transform="rotate(-90 48 48)"/><text x="48" y="53" text-anchor="middle" font-family="Inter Tight, Inter, system-ui, sans-serif" font-weight="600" font-size="17" fill="currentColor">${Math.round(f*100)}%</text></svg><div class="l">${esc(label)}<br><span class="num" style="color:var(--ink)">${esc(valTxt)}</span></div></div>`;
+}
+function vHome(v){
+  if(!S.moves.length){v.innerHTML=`<h1>Binder</h1><div class="empty"><div class="big" style="color:var(--ink)">Tu inventario está vacío</div><p>Registra tu primera compra con el botón amarillo, o prueba la app con datos de ejemplo.</p><button class="btn acc" data-go>Registrar compra</button><br><button class="linkb" data-demo>Ver con datos de ejemplo</button></div>`;
+    $('[data-go]',v).onclick=flowBuy;$('[data-demo]',v).onclick=()=>{loadDemo();render()};return}
+  const [cur]=monthAgg([mk(today())]),it=invTotals(),g=S.settings.goals;
+  const alerts=Object.values(S.products).filter(p=>p.target&&mktVal(p)!=null&&mktVal(p)>=p.target&&stock(p.pid)>0);
+  const sending=Object.values(S.products).filter(p=>p.grade&&p.grade.st==='sending'&&stock(p.pid));
+  const manual=Object.values(S.products).filter(p=>p.manual&&stock(p.pid));
+  const recent=[...S.moves].sort((a,b)=>b.date.localeCompare(a.date)).slice(0,6);
+  v.innerHTML=`<h1>${new Date().toLocaleDateString('es-ES',{month:'long'}).replace(/^./,c=>c.toUpperCase())}</h1>
+  ${storageOK?'':'<div class="banner">Este navegador no deja guardar datos. Exporta una copia desde Ajustes.</div>'}
+  <div class="kpis">
+    <div class="kpi"><div class="l">Dinero libre</div><div class="big ${cls(cur.net)}">${eur0(cur.net)}</div><div class="s mut">entradas − salidas</div></div>
+    <div class="kpi"><div class="l">Beneficio</div><div class="big ${cls(cur.profit)}">${eur0(cur.profit)}</div><div class="s mut">${cur.sales} cartas vendidas</div></div>
+    <div class="kpi wide"><div class="split"><div><div class="l">Valor del inventario</div><div class="big">${eur0(it.val)}</div></div><div style="text-align:right"><div class="l">Latente</div><div class="num ${cls(it.latent)}" style="font-size:18px">${sgn(r2(it.latent))}</div><div class="s mut">${it.units} cartas · coste ${eur0(it.cost)}</div></div></div></div></div>
+  <h3>Objetivos del mes</h3><div class="kpi rings">${ring(cur.profit,g.profit,'Beneficio',eur0(cur.profit)+' / '+eur0(g.profit))}${ring(cur.net,g.cash,'Dinero libre',eur0(cur.net)+' / '+eur0(g.cash))}${ring(cur.sales,g.sales,'Ventas',cur.sales+' / '+g.sales)}</div>
+  ${alerts.length?`<h3>En precio objetivo</h3><div class="box">${alerts.map(p=>`<div class="row tap" data-pid="${esc(p.pid)}">${thumb(p)}<div class="grow"><div class="t">${esc(p.name)}</div><div class="d">${esc(pDesc(p))}</div></div><div class="r small"><div class="num pos">${eur(mktVal(p))}</div><div class="mut num">obj. ${eur(p.target)}</div></div></div>`).join('')}</div>`:''}
+  ${sending.length?`<h3>En grading</h3><div class="box">${sending.map(p=>`<div class="row tap" data-pid="${esc(p.pid)}">${thumb(p)}<div class="grow"><div class="t">${esc(p.name)}</div><div class="d">${esc(p.grade.co)} · enviada hace ${days(p.grade.sent,today())} días</div></div><span class="tag acc">pendiente</span></div>`).join('')}</div>`:''}
+  ${manual.length?`<h3>Cartas manuales por revisar</h3><div class="box">${manual.map(p=>`<div class="row tap" data-pid="${esc(p.pid)}">${thumb(p)}<div class="grow"><div class="t">${esc(p.name)}</div><div class="d">${esc(pDesc(p))}</div></div><span class="tag warn">manual</span></div>`).join('')}</div>`:''}
+  <h3>Últimos movimientos</h3><div class="box">${recent.map(moveRow).join('')}</div>`;
+  bindRows(v);
+}
+function moveRow(m){const c=cashOf(m),pr=profitOf(m);return`<div class="row tap" data-mid="${m.id}"><div class="grow"><div class="t">${esc(moveTitle(m))}</div><div class="d">${esc(m.date)}${m.type==='sale'?' · beneficio '+sgn(r2(pr)):''}</div></div><div class="r num ${m.type==='capital'?'mut':cls(c)}">${m.type==='capital'?sgn(m.amount):c?sgn(r2(c)):'—'}</div></div>`}
+function bindRows(v){
+  $$('[data-pid]',v).forEach(r=>r.onclick=()=>productSheet(r.dataset.pid));
+  $$('[data-mid]',v).forEach(r=>r.onclick=()=>moveSheet(r.dataset.mid));
+}
+function moveSheet(id){
+  const m=S.moves.find(x=>x.id===id);if(!m)return;const P=S.products;
+  const li=(pid,q,extra)=>`<div class="row tap" data-pid="${esc(pid)}">${thumb(P[pid])}<div class="grow"><div class="t">${esc(pName(P[pid]))}</div><div class="d">${esc(pDesc(P[pid]))} · ${q} ud</div></div><div class="r num small">${extra}</div></div>`;
+  let body='';
+  if(m.type==='buy')body=`<div class="box">${m.lines.map(l=>li(l.pid,l.qty,eur(l.unit)+'/ud')).join('')}</div><div class="sum tot"><span>Pagado</span><span class="num">${eur(m.total+(m.ship||0))}</span></div>`;
+  if(m.type==='sale')body=`<div class="box">${m.lines.map(l=>li(l.pid,l.qty,sgn(r2(saleLineProfit(m,l))))).join('')}</div><div class="sum"><span class="mut">Ingresos</span><span class="num">${eur(revenue(m))}</span></div><div class="sum"><span class="mut">Comisión + envío</span><span class="num">−${eur(m.fee+(m.ship||0))}</span></div><div class="sum tot"><span>Beneficio</span><span class="num ${cls(profitOf(m))}">${sgn(r2(profitOf(m)))}</span></div>`;
+  if(m.type==='trade')body=`<h3 style="margin-top:0">Das</h3><div class="box">${m.give.map(g=>li(g.pid,g.qty,eur(allocCost(g.alloc)))).join('')}</div><h3>Recibes</h3><div class="box">${m.get.map(g=>li(g.pid,g.qty,eur(g.unit)+'/ud')).join('')}</div><div class="sum tot"><span>Dinero</span><span class="num">${sgn(m.cash)}</span></div>`;
+  if(m.type==='open')body=`<div class="box">${li(m.src.pid,1,eur(allocCost(m.src.alloc)))}</div><h3>Salieron</h3><div class="box">${m.get.map(g=>li(g.pid,g.qty,eur(g.unit)+'/ud')).join('')}</div>`;
+  if(m.type==='grade')body=`<div class="box">${li(m.to,1,'tarifa '+eur(m.fee))}</div>`;
+  if(m.type==='expense'||m.type==='capital')body=`<div class="sum tot"><span>Importe</span><span class="num">${eur(Math.abs(m.amount))}</span></div>`;
+  sheet(moveTitle(m).split(' · ')[0],`<div class="small mut" style="margin-bottom:12px">${esc(m.date)}</div>${body}<button class="btn full danger" data-del style="margin-top:20px">Borrar operación</button>`,b=>{
+    bindRows(b);
+    $('[data-del]',b).onclick=e=>confirmIn(e.target,'Pulsa otra vez para borrar',()=>{const err=undoMove(id);if(err){toast(err);return}closeSheet();render();toast('Operación borrada')});
+  });
+}
+function vInv(v){
+  const seg=`<div class="seg"><button data-s="cards" aria-pressed="${invSeg==='cards'}">Cartas</button><button data-s="sealed" aria-pressed="${invSeg==='sealed'}">Sellado</button><button data-s="moves" aria-pressed="${invSeg==='moves'}">Movimientos</button></div>`;
+  v.innerHTML=`<h1>Inventario</h1>${seg}<div class="ctl"></div><div class="lst"></div>`;
+  $$('[data-s]',v).forEach(b=>b.onclick=()=>{invSeg=b.dataset.s;render()});
+  if(invSeg==='moves'){const ms=[...S.moves].sort((a,b)=>b.date.localeCompare(a.date));$('.lst',v).innerHTML=ms.length?`<div class="box">${ms.map(moveRow).join('')}</div>`:'<div class="empty">Sin movimientos todavía.</div>';bindRows(v);return}
+  let sort='name';
+  $('.ctl',v).innerHTML=`<input class="i" placeholder="Filtrar: nombre, nº, idioma, psa…" aria-label="Filtrar inventario"><div class="chips" style="margin:10px 0 14px" data-chips="sort">${[['name','A–Z'],['value','Valor'],['age','Más tiempo'],['gain','Latente']].map(([k,l])=>`<button class="chip" data-v="${k}" aria-pressed="${k===sort}">${l}</button>`).join('')}</div>`;
+  const draw=()=>{
+    let items=searchInv($('.ctl input',v).value).filter(p=>(invSeg==='sealed')===(p.kind==='sealed'));
+    const age=p=>{const l=lotsOf(p.pid).find(x=>x.left>0);return l?days(l.date,today()):0};
+    const gain=p=>mktVal(p)!=null?mktVal(p)*stock(p.pid)-costLeft(p.pid):-Infinity;
+    if(sort==='value')items.sort((a,b)=>(mktVal(b)||0)*stock(b.pid)-(mktVal(a)||0)*stock(a.pid));
+    if(sort==='age')items.sort((a,b)=>age(b)-age(a));
+    if(sort==='gain')items.sort((a,b)=>gain(b)-gain(a));
+    $('.lst',v).innerHTML=items.length?`<div class="box">${items.map(p=>{const st=stock(p.pid),mv=mktVal(p),g=mv!=null?mv*st-costLeft(p.pid):null;return`<div class="row tap" data-pid="${esc(p.pid)}">${thumb(p)}<div class="grow"><div class="t">${esc(p.name)}</div><div class="d">${esc(pDesc(p))}</div><div class="d">${p.loc?esc(p.loc)+' · ':''}${age(p)} días${p.manual?' · <span class="tag warn">manual</span>':''}${p.grade&&p.grade.st==='sending'?' · <span class="tag acc">en grading</span>':''}</div></div><div class="r"><div class="num">${st} ud</div><div class="num small ${g==null?'mut':cls(g)}">${g==null?'sin precio':sgn(r2(g))}</div></div></div>`}).join('')}</div>`:'<div class="empty">Nada por aquí. Pulsa + para registrar una compra.</div>';
+    bindRows($('.lst',v));
+  };
+  $('.ctl input',v).oninput=draw;bindChips(v,'sort',s=>{sort=s;draw()});draw();
+}
+
+function chart(el,fn){const ro=new ResizeObserver(()=>{if(el.isConnected&&el.clientWidth>40)fn(el.clientWidth,el.clientHeight)});ro.observe(el);charts.push(ro)}
+function drawProfit(svgHost,data){
+  chart(svgHost,(W,H)=>{
+    const pad={l:6,r:6,t:14,b:22},iw=W-pad.l-pad.r,ih=H-pad.t-pad.b;
+    let acc=0;const cum=data.map(d=>acc+=d.profit);
+    const vals=[...data.map(d=>d.profit),...cum,0];const mx=Math.max(...vals),mn=Math.min(...vals);const span=(mx-mn)||1;
+    const y=v=>pad.t+ih*(mx-v)/span,bw=iw/data.length;
+    const narrow=W<420;
+    const bars=data.map((d,i)=>{const x=pad.l+i*bw+bw*.18,w=bw*.64,y0=y(Math.max(0,d.profit)),h=Math.abs(y(d.profit)-y(0));const last=i===data.length-1;
+      return`<rect x="${x}" y="${y0}" width="${w}" height="${Math.max(1,h)}" rx="3" fill="${last?'var(--acc)':d.profit<0?'var(--neg)':'var(--mut)'}" opacity="${last?1:.55}"><title>${mLabel(d.k)}: ${eur(d.profit)}</title></rect>${!narrow||i%2===data.length%2?`<text x="${x+w/2}" y="${H-6}" text-anchor="middle" font-size="11" fill="var(--mut)">${mLabel(d.k)}</text>`:''}`}).join('');
+    const pts=cum.map((c,i)=>`${pad.l+i*bw+bw/2},${y(c)}`).join(' ');
+    const lx=pad.l+(data.length-1)*bw+bw/2,ly=y(cum[cum.length-1]);
+    svgHost.innerHTML=`<svg viewBox="0 0 ${W} ${H}"><line x1="0" x2="${W}" y1="${y(0)}" y2="${y(0)}" stroke="var(--line)"/>${bars}<polyline points="${pts}" fill="none" stroke="var(--ink)" stroke-width="2" stroke-linejoin="round"/><circle cx="${lx}" cy="${ly}" r="4" fill="var(--ink)"/><text x="${Math.min(lx,W-4)}" y="${Math.max(12,ly-9)}" text-anchor="end" font-size="12" font-weight="600" fill="var(--ink)" font-family="Inter Tight, Inter, system-ui, sans-serif">${eur0(cum[cum.length-1])}</text></svg>`;
+  });
+}
+function drawCash(svgHost,data){
+  chart(svgHost,(W,H)=>{
+    const pad={l:6,r:6,t:10,b:22},iw=W-pad.l-pad.r,ih=H-pad.t-pad.b;
+    const mx=Math.max(1,...data.map(d=>d.cin)),mn=Math.max(1,...data.map(d=>d.cout));const span=mx+mn;
+    const y=v=>pad.t+ih*(mx-v)/span,bw=iw/data.length,narrow=W<420;
+    const bars=data.map((d,i)=>{const x=pad.l+i*bw+bw*.2,w=bw*.6;
+      return`<rect x="${x}" y="${y(d.cin)}" width="${w}" height="${Math.max(0,y(0)-y(d.cin))}" rx="2" fill="var(--pos)" opacity=".75"><title>${mLabel(d.k)} entradas ${eur(d.cin)}</title></rect><rect x="${x}" y="${y(0)}" width="${w}" height="${Math.max(0,y(-d.cout)-y(0))}" rx="2" fill="var(--neg)" opacity=".6"><title>${mLabel(d.k)} salidas ${eur(d.cout)}</title></rect>${!narrow||i%2===data.length%2?`<text x="${x+w/2}" y="${H-6}" text-anchor="middle" font-size="11" fill="var(--mut)">${mLabel(d.k)}</text>`:''}`}).join('');
+    const pts=data.map((d,i)=>`${pad.l+i*bw+bw/2},${y(Math.max(-mn,Math.min(mx,d.net)))}`).join(' ');
+    svgHost.innerHTML=`<svg viewBox="0 0 ${W} ${H}"><line x1="0" x2="${W}" y1="${y(0)}" y2="${y(0)}" stroke="var(--line)"/>${bars}<polyline points="${pts}" fill="none" stroke="var(--ink)" stroke-width="2"/>${data.map((d,i)=>`<circle cx="${pad.l+i*bw+bw/2}" cy="${y(Math.max(-mn,Math.min(mx,d.net)))}" r="2.5" fill="var(--ink)"/>`).join('')}</svg>`;
+  });
+}
+const hbars=(rows,fmt)=>{const mx=Math.max(1,...rows.map(r=>Math.abs(r.v)));return`<div class="box">${rows.map(r=>`<div class="row" style="display:block"><div class="split"><span class="t" style="font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(r.l)}</span><span class="num small ${r.c||''}">${fmt(r.v)}${r.s?' <span class="mut">'+esc(r.s)+'</span>':''}</span></div><div class="meter${r.acc?' acc':''}" style="margin-top:6px"><i style="width:${Math.abs(r.v)/mx*100}%;${r.v<0?'background:var(--neg)':''}"></i></div></div>`).join('')||'<div class="row mut small">Sin datos en este periodo</div>'}</div>`};
+
+function vStats(v){
+  charts.forEach(c=>c.disconnect());charts=[];
+  const per=statsPer,P=S.products;
+  const ms=S.moves.filter(m=>inPeriod(m.date,per));
+  const sales=ms.filter(m=>m.type==='sale');
+  const profit=ms.reduce((s,m)=>s+profitOf(m),0),cash=ms.reduce((s,m)=>s+cashOf(m),0);
+  const rev=sales.reduce((s,m)=>s+revenue(m),0),soldCost=sales.reduce((s,m)=>s+m.lines.reduce((a,l)=>a+allocCost(l.alloc),0),0);
+  const it=invTotals();
+  const months=monthAgg(lastMonths(12));
+  // acumulado de caja (todo el histórico) e inversión
+  const allCash=S.moves.reduce((s,m)=>s+cashOf(m),0);
+  let run=0,be=null;[...S.moves].sort((a,b)=>a.date.localeCompare(b.date)).forEach(m=>{const prev=run;run+=cashOf(m);if(prev<0&&run>=0)be=m.date});
+  const capital=S.moves.filter(m=>m.type==='capital').reduce((s,m)=>s+m.amount,0);
+  // compras/ventas top
+  const key=p=>p?p.name+(p.num?' '+p.num:''):'?';
+  const bought={},sold={};
+  ms.forEach(m=>{(m.type==='buy'||m.type==='trade'||m.type==='open'?(m.lines||m.get):[]).forEach(l=>{const p=P[l.pid];if(p&&p.kind==='card'){const k=key(p);bought[k]=(bought[k]||0)+l.qty}})});
+  sales.forEach(m=>m.lines.forEach(l=>{const k=key(P[l.pid]);sold[k]=sold[k]||{q:0,r:0};sold[k].q+=l.qty;sold[k].r+=l.qty*l.price}));
+  const topB=Object.entries(bought).sort((a,b)=>b[1]-a[1]).slice(0,5).map(([l,v])=>({l,v}));
+  const topS=Object.entries(sold).sort((a,b)=>b[1].q-a[1].q||b[1].r-a[1].r).slice(0,5).map(([l,x])=>({l,v:x.q,s:eur0(x.r)}));
+  // envejecimiento
+  const B=[['< 30 días',0,30],['30–90',30,90],['90–180',90,180],['> 180 días',180,1e9]].map(([l,a,b])=>({l,v:0,a,b}));
+  S.lots.forEach(l=>{if(!l.left)return;const d=days(l.date,today());const bk=B.find(x=>d>=x.a&&d<x.b);bk.v+=l.left});
+  let hold=0,hq=0;sales.forEach(m=>m.lines.forEach(l=>l.alloc.forEach(a=>{const lot=S.lots.find(x=>x.id===a.lot);if(lot){hold+=days(lot.date,m.date)*a.qty;hq+=a.qty}})));
+  const stale=Object.values(P).filter(p=>stock(p.pid)).map(p=>{const l=lotsOf(p.pid).find(x=>x.left>0);return{p,d:l?days(l.date,today()):0}}).sort((a,b)=>b.d-a.d).slice(0,5);
+  // rentabilidad por carta
+  const pc={};sales.forEach(m=>m.lines.forEach(l=>{pc[l.pid]=(pc[l.pid]||0)+saleLineProfit(m,l)}));
+  const perCard=Object.entries(pc).map(([pid,v])=>({l:key(P[pid])+' · '+(P[pid]?LNAME[P[pid].lang]:''),v,c:cls(v)})).sort((a,b)=>b.v-a.v);
+  const best=perCard.slice(0,5),worst=perCard.filter(x=>x.v<0).slice(-3).reverse();
+  // esperado vs real
+  const ev=[];sales.forEach(m=>m.lines.forEach(l=>{const p=P[l.pid];if(p&&p.target)ev.push({p,price:l.price,target:p.target})}));
+  const hit=ev.length?ev.filter(x=>x.price>=x.target).length/ev.length:null;
+  // canal, raw vs gradeadas
+  const byCh={};sales.forEach(m=>{const c=byCh[m.channel]=byCh[m.channel]||{r:0,f:0,p:0};c.r+=revenue(m);c.f+=m.fee+(m.ship||0);c.p+=profitOf(m)});
+  const rg={raw:{p:0,c:0},gr:{p:0,c:0}};sales.forEach(m=>m.lines.forEach(l=>{const g=P[l.pid]&&P[l.pid].grade?'gr':'raw';rg[g].p+=saleLineProfit(m,l);rg[g].c+=allocCost(l.alloc)}));
+  const expenses=ms.filter(m=>m.type==='expense').reduce((s,m)=>s+m.amount,0);
+  const trades=ms.filter(m=>m.type==='trade').length;
+
+  v.innerHTML=`<h1>Stats</h1><div class="chips" data-chips="per" style="margin-bottom:16px">${[['m','Este mes'],['3m','3 meses'],['y','Este año'],['all','Todo']].map(([k,l])=>`<button class="chip" data-v="${k}" aria-pressed="${k===per}">${l}</button>`).join('')}</div>
+  <div class="kpis">
+    <div class="kpi"><div class="l">Beneficio realizado</div><div class="big ${cls(profit)}">${eur0(profit)}</div><div class="s mut">ROI ventas ${pct(soldCost?(rev-sales.reduce((s,m)=>s+m.fee+(m.ship||0),0)-soldCost)/soldCost:null)}</div></div>
+    <div class="kpi"><div class="l">Dinero libre</div><div class="big ${cls(cash)}">${eur0(cash)}</div><div class="s mut">flujo de caja</div></div>
+    <div class="kpi"><div class="l">Beneficio latente</div><div class="big ${cls(it.latent)}">${eur0(it.latent)}</div><div class="s mut">${pct(it.cost?it.latent/it.cost:null)} sobre coste</div></div>
+    <div class="kpi"><div class="l">Ventas</div><div class="big">${eur0(rev)}</div><div class="s mut">${sales.reduce((s,m)=>s+m.lines.reduce((a,l)=>a+l.qty,0),0)} cartas · gastos ${eur0(expenses)}</div></div></div>
+
+  <h3>Beneficio por mes</h3><div class="kpi"><div class="legend"><span><i style="background:var(--mut);opacity:.55"></i>Mensual</span><span><i style="background:var(--acc)"></i>Mes actual</span><span><i style="background:var(--ink);height:2px;vertical-align:3px"></i>Acumulado 12 meses</span></div><div class="fig" id="fProfit"></div></div>
+
+  <h3>Flujo de caja</h3><div class="kpi"><div class="legend"><span><i style="background:var(--pos)"></i>Entradas</span><span><i style="background:var(--neg)"></i>Salidas</span><span><i style="background:var(--ink);height:2px;vertical-align:3px"></i>Neto</span></div><div class="fig" id="fCash"></div>
+    <div class="split small" style="margin-top:8px"><span class="mut">Caja acumulada (todo)</span><span class="num ${cls(allCash)}">${sgn(r2(allCash))}</span></div>
+    <div class="split small"><span class="mut">${allCash>=0?'Inversión recuperada':'Falta por recuperar'}</span><span class="num">${allCash>=0?(be?esc(be):'sí'):eur(-allCash)}</span></div>
+    ${capital?`<div class="split small"><span class="mut">Aportaciones netas tuyas</span><span class="num">${sgn(capital)}</span></div>`:''}</div>
+
+  <h3>Lo que más compras</h3>${hbars(topB,v=>v+' ud')}
+  <h3>Lo que más vendes</h3>${hbars(topS.map(x=>({...x,acc:1})),v=>v+' ud')}
+
+  <h3>Tiempo en inventario</h3>${hbars(B.map(b=>({l:b.l,v:b.v,acc:b.a>=180})),v=>v+' ud')}
+  <div class="kpi" style="margin-top:10px"><div class="split"><span class="mut small">Media hasta vender</span><span class="num">${hq?Math.round(hold/hq)+' días':'—'}</span></div></div>
+  ${stale.length?`<h3>Más estancadas</h3><div class="box">${stale.map(x=>`<div class="row tap" data-pid="${esc(x.p.pid)}">${thumb(x.p)}<div class="grow"><div class="t">${esc(x.p.name)}</div><div class="d">${esc(pDesc(x.p))}</div></div><div class="r num">${x.d} días</div></div>`).join('')}</div>`:''}
+
+  <h3>Rentabilidad por carta</h3>${hbars(best,sgn)}
+  ${worst.length?`<h3>Peores ventas</h3>${hbars(worst,sgn)}`:''}
+
+  <h3>Esperado vs real</h3><div class="kpi">${ev.length?`<div class="split"><span class="mut small">Ventas a precio objetivo o más</span><span class="big" style="font-size:24px">${Math.round(hit*100)} %</span></div>
+    <div class="box" style="border:0;padding:0;margin-top:6px">${ev.slice(-6).reverse().map(x=>`<div class="row"><div class="grow"><div class="t">${esc(x.p.name)}</div><div class="d">objetivo ${eur(x.target)} · vendida ${eur(x.price)}</div></div><div class="r num ${cls(x.price-x.target)}">${sgn(r2(x.price-x.target))}</div></div>`).join('')}</div>`:'<div class="small mut">Pon un precio objetivo en la ficha de cada carta para comparar.</div>'}</div>
+
+  <h3>Por canal</h3><div class="box">${Object.entries(byCh).map(([n,c])=>`<div class="row"><div class="grow"><div class="t">${esc(n)}</div><div class="d">ventas ${eur0(c.r)} · comisiones y envíos ${eur0(c.f)}</div></div><div class="r num ${cls(c.p)}">${sgn(r2(c.p))}</div></div>`).join('')||'<div class="row mut small">Sin ventas</div>'}</div>
+
+  <h3>Raw vs gradeadas</h3><div class="kpis"><div class="kpi"><div class="l">Raw</div><div class="num ${cls(rg.raw.p)}" style="font-size:20px">${sgn(r2(rg.raw.p))}</div><div class="s mut">ROI ${pct(rg.raw.c?rg.raw.p/rg.raw.c:null)}</div></div><div class="kpi"><div class="l">Gradeadas</div><div class="num ${cls(rg.gr.p)}" style="font-size:20px">${sgn(r2(rg.gr.p))}</div><div class="s mut">ROI ${pct(rg.gr.c?rg.gr.p/rg.gr.c:null)}</div></div></div>
+  <p class="small mut" style="margin-top:18px">${trades} intercambios en el periodo. Los gráficos muestran siempre los últimos 12 meses.</p>`;
+  bindChips(v,'per',p=>{statsPer=p;render()});
+  drawProfit($('#fProfit',v),months);drawCash($('#fCash',v),months);
+  bindRows(v);
+}
+
+function vSet(v){
+  const s=S.settings;
+  v.innerHTML=`<h1>Ajustes</h1>
+  <label class="f">Idioma por defecto</label>${chipRow('lang',LANGS,s.lang)}
+  <label class="f">Estado por defecto</label>${chipRow('cond',CONDS.map(c=>[c,c]),s.cond)}
+  <h3>Canales y comisión (%)</h3><div class="box ch">${s.channels.map((c,i)=>`<div class="row"><input class="i" data-cn="${i}" value="${esc(c.n)}" aria-label="Canal"><input class="i" style="width:90px" data-cf="${i}" inputmode="decimal" value="${c.fee}" aria-label="Comisión %"><button class="linkb" data-cx="${i}" aria-label="Quitar canal">×</button></div>`).join('')}</div>
+  <button class="btn sm" data-addch style="margin-top:8px">+ Canal</button>
+  <h3>Objetivos mensuales</h3><div class="grid2"><div><label class="f">Beneficio €</label><input class="i" data-g="profit" inputmode="decimal" value="${s.goals.profit}"></div><div><label class="f">Dinero libre €</label><input class="i" data-g="cash" inputmode="decimal" value="${s.goals.cash}"></div></div><label class="f">Cartas vendidas</label><input class="i" data-g="sales" inputmode="numeric" value="${s.goals.sales}">
+  <h3>Precios</h3><button class="btn full" data-prices>Actualizar precios de mercado (Cardmarket vía TCGdex)</button><div class="small mut pst" style="margin-top:6px"></div>
+  <h3>Copia de seguridad</h3><p class="small mut" style="margin-top:-4px">Tus datos viven solo en este móvil. Exporta una copia de vez en cuando.</p>
+  <div class="grid2"><button class="btn" data-exp>Descargar copia</button><button class="btn" data-copy>Copiar datos</button></div>
+  <label class="f">Restaurar copia (pega el texto o elige el archivo)</label><textarea class="i" data-imp placeholder='{"v":1,...}'></textarea>
+  <div class="grid2" style="margin-top:8px"><label class="btn">Elegir archivo<input type="file" accept=".json,application/json" hidden data-file></label><button class="btn pri" data-restore>Restaurar</button></div>
+  <hr><button class="btn full" data-demo>Cargar datos de ejemplo</button><button class="btn full danger" data-reset style="margin-top:10px">Borrar todo</button>
+  <p class="small mut" style="margin-top:18px">Catálogo y precios: TCGdex (Cardmarket). Lectura por foto: Tesseract.js, en el propio móvil.</p>`;
+  bindChips(v,'lang',x=>{s.lang=x;save()});bindChips(v,'cond',x=>{s.cond=x;save()});
+  $$('[data-cn]',v).forEach(i=>i.onchange=()=>{s.channels[+i.dataset.cn].n=i.value.trim()||'Canal';save()});
+  $$('[data-cf]',v).forEach(i=>i.onchange=()=>{s.channels[+i.dataset.cf].fee=num(i.value);save()});
+  $$('[data-cx]',v).forEach(b=>b.onclick=()=>{if(s.channels.length>1){s.channels.splice(+b.dataset.cx,1);save();render()}});
+  $('[data-addch]',v).onclick=()=>{s.channels.push({n:'Nuevo canal',fee:0});save();render()};
+  $$('[data-g]',v).forEach(i=>i.onchange=()=>{s.goals[i.dataset.g]=num(i.value);save()});
+  $('[data-prices]',v).onclick=async e=>{
+    const ps=Object.values(S.products).filter(p=>p.cardId&&!p.manual&&!p.mktManual&&!p.grade&&stock(p.pid));let ok=0,fail=0;
+    e.target.disabled=true;
+    for(const p of ps){$('.pst',v).textContent=`Actualizando ${ok+fail+1} de ${ps.length}…`;try{delete S.catalog[p.cardId+'@'+p.lang];const c=await cardDetail(p.lang,p.cardId);p.mkt=priceFor(c,p.finish);p.mktAt=today();ok++}catch(err){fail++}}
+    save();e.target.disabled=false;$('.pst',v).textContent=`${ok} actualizadas${fail?`, ${fail} sin conexión`:''}. Las gradeadas y los precios puestos a mano no se tocan.`;
+  };
+  const dump=()=>JSON.stringify(S);
+  $('[data-exp]',v).onclick=()=>{try{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([dump()],{type:'application/json'}));a.download='binder-'+today()+'.json';document.body.appendChild(a);a.click();a.remove();toast('Copia descargada')}catch(e){toast('No se pudo descargar: usa Copiar datos')}};
+  $('[data-copy]',v).onclick=async()=>{try{await navigator.clipboard.writeText(dump());toast('Datos copiados')}catch(e){$('[data-imp]',v).value=dump();toast('Copia el texto del recuadro')}};
+  $('[data-file]',v).onchange=async e=>{const f=e.target.files[0];if(f)$('[data-imp]',v).value=await f.text()};
+  $('[data-restore]',v).onclick=e=>{try{const d=JSON.parse($('[data-imp]',v).value);if(!d||!d.products||!d.lots||!d.moves)throw 0;confirmIn(e.target,'Pulsa otra vez: reemplaza todo',()=>{S=d;save();toast('Copia restaurada');tab='home';render()})}catch(err){toast('Ese texto no es una copia válida')}};
+  $('[data-demo]',v).onclick=e=>confirmIn(e.target,'Pulsa otra vez: reemplaza tus datos',()=>{loadDemo();tab='home';render()});
+  $('[data-reset]',v).onclick=e=>confirmIn(e.target,'Pulsa otra vez para borrar todo',()=>{const st=S.settings;S=blank();S.settings=st;save();tab='home';render()});
+}
+
+/* ================= datos de ejemplo ================= */
+function loadDemo(){
+  const st=S.settings;S=blank();S.settings=st;
+  const d=n=>{const x=new Date();x.setDate(x.getDate()-n);return x.toISOString().slice(0,10)};
+  const C=id=>DEMO.find(c=>c.id===id);
+  const buy=(date,items,total,ship=0)=>{const lines=items.map(([id,lang,qty,o={}])=>{const e=id.startsWith('S:')?{sealed:true,name:id.slice(2),set:id.slice(2).split(' ').slice(1).join(' ')}:{...C(id),lang,at:d(1)};return{e,o:{lang,finish:'normal',cond:'NM',...o},qty,mkt:e.sealed?null:e.price}});
+    const u=splitCost(total,lines),mid=uid();const ml=lines.map((l,i)=>{const pid=ensureProduct(l.e,l.o);addLot(pid,l.qty,u[i],date,'compra',mid);return{pid,qty:l.qty,unit:u[i]}});S.moves.push({id:mid,type:'buy',date,total,ship,lines:ml});return ml.map(x=>x.pid)};
+  const sell=(date,ch,items,feePct)=>{const mid=uid();const lines=items.map(([pid,qty,price])=>({pid,qty,price,alloc:fifo(pid,qty,true)}));const rev=lines.reduce((s,l)=>s+l.qty*l.price,0);S.moves.push({id:mid,type:'sale',date,channel:ch,fee:r2(rev*feePct/100),ship:ch==='Cardmarket'?1.2:0,lines})};
+  const [a,b2,c]=buy(d(240),[['sv3pt5-199','es',2],['sv3pt5-205','en',3],['sv3-125','es',6]],290,4);
+  const [u]=buy(d(205),[['swsh7-215','en',1]],780);
+  const [box]=buy(d(170),[['S:ETB Surging Sparks','es',3]],150);
+  const [pk,pk2]=buy(d(130),[['sv8-238','ja',1],['sv8-219','es',4]],330,5);
+  const [gz,ch2]=buy(d(95),[['swsh12pt5-GG70','en',2],['sv3-223','es',2]],210);
+  const [bs]=buy(d(60),[['base1-4','en',1,{cond:'EX'}]],240);
+  const [ps]=buy(d(40),[['sv3pt5-199','ja',1,{grade:{co:'PSA',g:'10',cert:'84213377',st:'graded'}}]],420);
+  buy(d(12),[['sv5-180','es',8],['sv7-175','es',2]],150,3);
+  S.products[a].target=230;S.products[u].target=1150;S.products[pk].target=300;S.products[ps].mkt=520;S.products[ps].mktManual=true;S.products[ps].target=560;
+  S.products[a].loc='Carpeta 1 · p2';S.products[u].loc='Caja gradeables';
+  sell(d(215),'Cardmarket',[[c,3,9]],5);sell(d(180),'Wallapop',[[b2,1,48]],0);sell(d(150),'Cardmarket',[[a,1,215]],5);
+  sell(d(120),'En mano',[[c,2,8],[b2,1,45]],0);sell(d(88),'Cardmarket',[[pk2,2,52]],5);sell(d(70),'Cardmarket',[[gz,1,98]],5);
+  sell(d(45),'eBay',[[ch2,1,64]],13);sell(d(21),'Cardmarket',[[pk2,1,49],[ch2,1,58]],5);sell(d(6),'Wallapop',[[a,1,236]],0);sell(d(2),'Cardmarket',[[gz,1,94]],5);
+  // abrir una ETB
+  {const mid=uid();const alloc=fifo(box,1,true);const lines=[{e:{...C('sv8-219'),lang:'es'},o:{lang:'es',finish:'reverse',cond:'NM'},qty:1,mkt:45},{e:{...C('sv8-238'),lang:'es'},o:{lang:'es',finish:'normal',cond:'NM'},qty:1,mkt:280}];
+   const uu=splitCost(allocCost(alloc),lines);const gt=lines.map((l,i)=>{const pid=ensureProduct(l.e,l.o);addLot(pid,1,uu[i],d(100),'sellado',mid);S.products[pid].origin='Abierta de ETB Surging Sparks';return{pid,qty:1,unit:uu[i]}});
+   S.moves.push({id:mid,type:'open',date:d(100),src:{pid:box,alloc},get:gt});}
+  // gradear la Base Set
+  {const mid=uid();const alloc=fifo(bs,1,true);const npid='g|'+mid;S.products[npid]={...JSON.parse(JSON.stringify(S.products[bs])),pid:npid,grade:{co:'PSA',g:'',cert:'',st:'sending',sent:d(30)},mkt:null,mktAt:null,target:null,origin:'Gradeada desde raw'};addLot(npid,1,allocCost(alloc)+32,d(30),'grading',mid);S.moves.push({id:mid,type:'grade',date:d(30),fee:32,from:{pid:bs,alloc},to:npid});}
+  S.moves.push({id:uid(),type:'expense',date:d(150),cat:'Material',amount:28,note:'Fundas y toploaders'},{id:uid(),type:'expense',date:d(50),cat:'Eventos',amount:15,note:'Entrada feria'},{id:uid(),type:'capital',date:d(241),amount:1500,note:'Inicial'});
+  for(const p of Object.values(S.products))if(!S.lots.some(l=>l.pid===p.pid))delete S.products[p.pid];
+  save();toast('Datos de ejemplo cargados');
+}
+
+/* ================= arranque ================= */
+$$('.nav [data-tab]').forEach(b=>b.onclick=()=>{tab=b.dataset.tab;render()});
+$('#plus').onclick=newOp;
+render();
+if('serviceWorker'in navigator&&location.protocol==='https:'&&!/claude|claudeusercontent/.test(location.hostname)){navigator.serviceWorker.register('sw.js').catch(()=>{})}
+}
+</script>
+</body>
+</html>
